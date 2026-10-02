@@ -6,7 +6,7 @@ Plan zajęć z USOS, terminy egzaminów, przedmioty i kontakty do prowadzących 
 
 **Adres aplikacji:** https://11rk1.github.io/Starosta/
 
-Twoje notatki, zadania i własne wpisy zostają tylko na Twoim urządzeniu, a starosta ich nie widzi. Informacje od starosty (plan, terminy, przedmioty, kontakty do prowadzących) są publikowane w pliku `grupa.json` w tym repozytorium i pobierają się do aplikacji automatycznie.
+Twoje notatki, zadania i własne wpisy zostają tylko na Twoim urządzeniu, a starosta ich nie widzi. Informacje od starosty (plan, terminy, przedmioty, kontakty do prowadzących) są publikowane w pliku `grupa.json`. Plik jest **zaszyfrowany hasłem grupy**, więc bez hasła nikt nie odczyta jego treści.
 
 ---
 
@@ -38,19 +38,13 @@ Przy zajęciach zobaczysz, jak się odbywają:
 
 Dni ze zjazdem są oznaczone „Zjazd w Mińsku”, a dni w całości zdalne mają oznaczenie „Online”.
 
-**Własny link z USOS (opcjonalnie).** Jeśli chcesz, żeby plan aktualizował się sam:
-1. W **USOSweb** wejdź w **Mój USOSweb** → **Plan zajęć**, wybierz eksport i skopiuj **Odnośnik do planu**.
-2. W aplikacji wybierz **Plan** → **Połącz z USOS**, wklej link i stuknij **Zapisz i pobierz**.
-
-Z własnym linkiem widzisz swój plan zamiast planu od starosty, a odświeża się on automatycznie co kilka godzin.
-
-> Link z USOS to prywatny klucz do Twojego planu, który działa bez logowania. Nie wysyłaj go nikomu poza starostą.
-
 ## 4. Informacje od starosty
+
+Przy pierwszym uruchomieniu aplikacja poprosi o **hasło grupy**. Dostaniesz je od starosty. Wpisujesz je raz, a jeśli starosta je zmieni, aplikacja poprosi o nowe.
 
 Plan zajęć, terminy egzaminów, warunki zaliczeń i kontakty do prowadzących **pobierają się same** przy każdym uruchomieniu aplikacji z internetem. Zmiany od starosty pojawiają się zwykle w ciągu kilku minut.
 
-Wpisy od starosty mają dopisek „od starosty”. Twój plan z własnego linku, zadania i własne wpisy pozostają bez zmian.
+Wpisy od starosty mają dopisek „od starosty”. Twoje zadania i własne wpisy pozostają bez zmian.
 
 Jeśli starosta wyśle plik `dla-grupy-RRRR-MM-DD.json`, możesz go też wczytać ręcznie: **Ustawienia → Wczytaj plik od starosty**.
 
@@ -80,7 +74,10 @@ Usunięcie aplikacji z ekranu albo wyczyszczenie danych przeglądarki kasuje dan
   1. Na github.com: zdjęcie profilowe → **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
   2. Nazwa dowolna, **Expiration** np. 1 rok, **Repository access: Only select repositories → Starosta**.
   3. **Permissions → Repository permissions → Contents: Read and write**. Potem **Generate token** i skopiuj token.
-  4. W aplikacji: **Ustawienia → Połączenie z GitHubem**, wklej token i stuknij **Zapisz i opublikuj**.
+  4. W aplikacji: **Ustawienia → Hasło grupy**, wpisz hasło (min. 8 znaków, najlepiej kilka słów) i stuknij **Zapisz hasło**.
+  5. **Ustawienia → Połączenie z GitHubem**, wklej token i stuknij **Zapisz i opublikuj**.
+
+  Bez hasła grupy aplikacja niczego nie opublikuje. Hasło podaj kolegom na Waszej grupie, a nie w repozytorium.
 
   Od tej pory każda zmiana terminów, przedmiotów, kontaktów albo planu z USOS sama trafia do grupy po kilku sekundach. Token zostaje tylko na Twoim urządzeniu, nikomu go nie wysyłaj.
 - **Ustawienia → Wyślij jako plik** to zapasowy sposób bez GitHuba. Do publikacji i pliku trafia plan z USOS obu specjalizacji. Nie trafiają do niego kontakty z rolą „Student”, zajęcia dodane ręcznie, zadania ani linki do USOS.

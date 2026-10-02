@@ -183,6 +183,8 @@ details.past{margin-top:24px}details.past summary{cursor:pointer;color:var(--mut
  </div></fieldset>
  <h4 class="sect">Informacje dla grupy</h4>
  <p id="groupInfo"></p>
+ <div class="pwrow"><label class="fl" for="grpPw"><span id="grpPwLabel">Hasło grupy</span><input id="grpPw" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"></label><button class="btn" type="button" id="grpPwSave">Zapisz hasło</button></div>
+ <p class="note" id="grpPwNote" style="margin:4px 0 0"></p>
  <div class="actions" style="justify-content:flex-start">
   <button class="btn primary" type="button" id="pubBtn">Opublikuj teraz</button>
   <button class="btn" type="button" id="ghBtn">Połączenie z GitHubem</button>
@@ -334,7 +336,7 @@ function render(){
   const open=D.zadania.filter(t=>!t.zrobione);
   const week=D.terminy.filter(t=>{const n=daysTo(t.data);return n>=0&&n<=7}).length;
   v.innerHTML=`<h1>${new Date().toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</h1>
-  ${installHint()}<p class="sub">${isStarosta()?"Wszystko, co potrzebne starości, w jednym miejscu.":"Plan, terminy i kontakty w jednym miejscu."}</p>${!isStarosta()&&!hasGroup()?`<div class="install">Informacje od starosty (plan, terminy, kontakty) pojawią się tu automatycznie, gdy będziesz online. Masz plik od starosty? <div><label class="btn primary filebtn" for="groupFile2">Wczytaj plik od starosty<input type="file" id="groupFile2" data-import accept=".json,application/json"></label></div></div>`:""}
+  ${installHint()}<p class="sub">${isStarosta()?"Wszystko, co potrzebne starości, w jednym miejscu.":"Plan, terminy i kontakty w jednym miejscu."}</p>${!isStarosta()&&S.needPw?`<div class="install"><b>Podaj hasło grupy</b>, żeby odblokować informacje od starosty. Hasło dostaniesz od starosty.<div class="pwrow"><label class="fl" for="unlockPw">Hasło grupy<input id="unlockPw" type="password" autocomplete="off" autocapitalize="off"></label><button class="btn primary" type="button" id="unlockBtn">Odblokuj</button></div>${S.pwWrong?`<p class="note" style="margin:6px 0 0;color:var(--accent)">Hasło nie pasuje. Sprawdź wielkość liter albo zapytaj starostę, czy hasło się nie zmieniło.</p>`:""}</div>`:""}${!isStarosta()&&!S.needPw&&!hasGroup()?`<div class="install">Informacje od starosty (plan, terminy, kontakty) pojawią się tu automatycznie, gdy będziesz online. Masz plik od starosty? <div><label class="btn primary filebtn" for="groupFile2">Wczytaj plik od starosty<input type="file" id="groupFile2" data-import accept=".json,application/json"></label></div></div>`:""}
   <div class="stats"><div class="stat"><b>${today.length}</b><span>zajęć dziś</span></div>
   <div class="stat"><b>${week}</b><span>terminów w 7 dni</span></div>
   <div class="stat"><b>${open.length}</b><span>zadań otwartych</span></div></div>
@@ -344,8 +346,8 @@ function render(){
   <h2>Do zrobienia</h2><div class="list">${open.length?sortTask(open).slice(0,5).map(itemTask).join(""):empty("Wszystko zrobione.","zadania")}</div></div></div>`;
  } else if(S.tab==="zajecia"){
   const z=sortZ(D.zajecia);let h=`<h1>Plan zajęć</h1><p class="sub">Semestr zimowy. Dotknij zajęć, żeby je edytować.</p>
-  <div class="toolbar">${anyLink()?`<button class="btn primary" type="button" id="usosSync">Odśwież z USOS</button><button class="btn" type="button" id="usosLinkBtn">Linki USOS</button>`:`<button class="btn${isStarosta()?" primary":""}" type="button" id="usosLinkBtn">Połącz z USOS</button>`}${D.zajecia.some(x=>x.data&&x.data>=todayISO())?`<button class="btn" type="button" id="calZaj">Do kalendarza</button>`:""}</div>
-  ${anyLink()?`<p class="note" style="margin:-6px 0 14px">${esc(usosStatus())}</p>`:!isStarosta()?`<p class="note" style="margin:-6px 0 14px">Plan dostajesz w pliku od starosty. Możesz też podłączyć własny link z USOS.</p>`:""}
+  <div class="toolbar">${!isStarosta()?"":anyLink()?`<button class="btn primary" type="button" id="usosSync">Odśwież z USOS</button><button class="btn" type="button" id="usosLinkBtn">Linki USOS</button>`:`<button class="btn primary" type="button" id="usosLinkBtn">Połącz z USOS</button>`}${D.zajecia.some(x=>x.data&&x.data>=todayISO())?`<button class="btn" type="button" id="calZaj">Do kalendarza</button>`:""}</div>
+  ${anyLink()?`<p class="note" style="margin:-6px 0 14px">${esc(usosStatus())}</p>`:!isStarosta()?`<p class="note" style="margin:-6px 0 14px">Plan pobiera się automatycznie od starosty.</p>`:""}
   <div class="note helpbox" id="usosHelpBox" hidden></div>`;
   if(!z.length)h+=empty("Nie ma jeszcze żadnych zajęć.","zajecia");
   const tISO=todayISO(),dated=z.filter(x=>x.data),weekly=z.filter(x=>!x.data);
@@ -538,11 +540,11 @@ const LINKS="panel-starosty-usos-links";
 function getLinks(){let o={};try{o=JSON.parse(lsGet(LINKS)||"{}")||{}}catch(e){}
  const old=lsGet(ULINK);if(old){o[mySpec()||"cyber"]=old;lsSet(ULINK,null);lsSet(LINKS,JSON.stringify(o))}
  for(const k of Object.keys(o))if(!o[k])delete o[k];return o}
-const anyLink=()=>Object.keys(getLinks()).length>0;
+const anyLink=()=>isStarosta()&&Object.keys(getLinks()).length>0;
 const ownSpec=()=>mySpec()||"cyber";
 const linkSpecs=()=>isStarosta()?["cyber","detektywi"]:[ownSpec()];
 function visZaj(z,f){
- if(!isStarosta()){if(z.zrodlo==="usos")return true;if(z.zrodlo==="grupa"&&anyLink())return false}
+ if(!isStarosta()&&z.zrodlo==="usos")return false
  return forSpec(z,f)}
 function usosStatus(){const L=getLinks();return Object.keys(L).map(sp=>{const t=lsGet(USYNC+"-"+sp);return(isStarosta()?SPECY[sp]+": ":"")+(t?"pobrano "+new Date(t).toLocaleString("pl-PL",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"}):"jeszcze nie pobrano")}).join(" · ")}
 function showUsosFallback(sp,url){
@@ -554,7 +556,7 @@ async function syncOne(sp,url,silent){
  if(!r.ok)throw new Error("http "+r.status);
  const text=await r.text();if(!/BEGIN:VCALENDAR/.test(text))throw new Error("format");
  const n=importUSOS(text,sp);lsSet(USYNC+"-"+sp,new Date().toISOString());return n}
-async function syncUSOS(silent,only){
+async function syncUSOS(silent,only){if(!isStarosta())return false;
  const L=getLinks(),specs=Object.keys(L).filter(sp=>!only||sp===only);if(!specs.length)return false;
  if(!navigator.onLine){if(!silent)toast("Brak internetu. Spróbuj później.");return false}
  if(!silent)toast("Pobieram plan z USOS…");
@@ -564,7 +566,7 @@ async function syncUSOS(silent,only){
  if(!silent){if(fail){if(String(fail.err.message).startsWith("http 4"))toast("USOS odrzucił link"+(isStarosta()?" ("+SPECY[fail.sp]+")":"")+". Skopiuj go ponownie z USOSweb.");else showUsosFallback(fail.sp,L[fail.sp])}
   else toast("Zaktualizowano plan z USOS ("+ok.join(", ")+")")}
  return !fail}
-function openUsosDialog(){
+function openUsosDialog(){if(!isStarosta())return;
  const L=getLinks();
  $("#usosRows").innerHTML=linkSpecs().map(sp=>`<div class="usosrow">
   <label class="fl" for="usosUrl-${sp}">${isStarosta()?"Plan – "+SPECY[sp]:"Twój link z USOS (opcjonalnie)"}<input id="usosUrl-${sp}" data-spec-url="${sp}" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://usosapi…/services/tt/upcoming_ical?…" value="${esc(L[sp]||"")}"></label>
@@ -606,6 +608,9 @@ function openSettings(){lastBackupText();
  document.querySelectorAll('#bform input[name=rola]').forEach(r=>r.checked=r.value===(isStarosta()?"starosta":"student"));
  document.querySelectorAll('#bform input[name=spec]').forEach(r=>r.checked=r.value===mySpec());
  $("#pwRow").hidden=true;$("#pwErr").hidden=true;
+ $("#grpPw").value=lsGet(GPW)||"";$("#grpPw").type=isStarosta()?"text":"password";
+ $("#grpPwLabel").textContent=isStarosta()?"Hasło grupy – podaj je kolegom":"Hasło grupy od starosty";
+ $("#grpPwNote").textContent=isStarosta()?(lsGet(GPW)?"Dane w grupa.json są zaszyfrowane tym hasłem. Po zmianie hasła podaj nowe kolegom.":"Ustaw hasło, zanim opublikujesz dane – bez niego nic nie zostanie wysłane."):"";
  $("#groupInfo").textContent=groupInfoText();for(const id of ["shareGroupBtn","pubBtn","ghBtn"])$("#"+id).hidden=!isStarosta();
  const cfg=getGH();$("#pubBtn").hidden=!isStarosta()||!cfg.token;$("#ghBox").hidden=true;$("#bdlg").showModal()}
 $("#backupBtn").onclick=openSettings;
@@ -637,10 +642,30 @@ function importGroup(o,auto){
 
 // Automatyczne pobieranie informacji od starosty (plik grupa.json obok aplikacji)
 let lastFetch=0;
+// Szyfrowanie danych grupy: AES-256-GCM, klucz z hasła grupy (PBKDF2-SHA-256)
+const GPW="panel-starosty-haslo-grupy";
+const u8b64=u=>{let s="";for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)};
+const b64u8=b=>Uint8Array.from(atob(b),c=>c.charCodeAt(0));
+async function grpKey(pw,salt,iter){const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveKey"]);
+ return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:iter,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"])}
+async function encryptGroup(dane,pw){const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),iter=250000;
+ const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},await grpKey(pw,salt,iter),new TextEncoder().encode(JSON.stringify(dane)));
+ return{aplikacja:"Memento Egzamini",typ:"grupa-szyfr",wersja:2,zapisano:new Date().toISOString(),kdf:{iter,salt:u8b64(salt)},iv:u8b64(iv),dane:u8b64(new Uint8Array(ct))}}
+async function decryptGroup(o,pw){const k=await grpKey(pw,b64u8(o.kdf.salt),o.kdf.iter);
+ const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64u8(o.iv)},k,b64u8(o.dane));return JSON.parse(new TextDecoder().decode(pt))}
+async function handleEncrypted(o,auto,pw){
+ pw=pw||lsGet(GPW);if(!pw){S.needPw=true;S.pwWrong=false;S.pending=o;render();if(!auto){S.tab="home";render();toast("Podaj hasło grupy")}return false}
+ try{const dane=await decryptGroup(o,pw);lsSet(GPW,pw);S.needPw=false;S.pwWrong=false;S.pending=null;importGroup({...o,dane},auto);return true}
+ catch(_){S.needPw=true;S.pwWrong=true;S.pending=o;render();return false}}
 async function fetchGroup(){
  if(isStarosta()||!navigator.onLine||location.protocol!=="https:"||Date.now()-lastFetch<5*6e4)return;lastFetch=Date.now();
- try{const r=await fetch("grupa.json",{cache:"no-store"});if(!r.ok)return;const o=await r.json();
-  if(!o||o.typ!=="grupa"||typeof o.dane!=="object")return;const last=lsGet(GSYNC);if(last&&o.zapisano&&o.zapisano<=last)return;importGroup(o,true)}catch(_){}}
+ try{const r=await fetch("grupa.json",{cache:"no-store"});if(!r.ok)return;const o=await r.json();if(!o)return;
+  const last=lsGet(GSYNC);if(last&&o.zapisano&&o.zapisano<=last&&!S.needPw)return;
+  if(o.typ==="grupa-szyfr"){await handleEncrypted(o,true);return}
+  if(o.typ==="grupa"&&typeof o.dane==="object")importGroup(o,true)}catch(_){}}
+document.addEventListener("click",async e=>{if(e.target.id!=="unlockBtn")return;const pw=$("#unlockPw").value;if(!pw||!S.pending)return;
+ e.target.disabled=true;const ok=await handleEncrypted(S.pending,false,pw);if(ok)toast("Odblokowano informacje od starosty")});
+document.addEventListener("keydown",e=>{if(e.target.id==="unlockPw"&&e.key==="Enter"){e.preventDefault();$("#unlockBtn").click()}});
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")fetchGroup()});
 
 // Publikowanie dla grupy przez GitHub (tylko starosta, token zostaje na urządzeniu)
@@ -657,18 +682,22 @@ function schedulePublish(){if(!isStarosta())return;const c=getGH();if(!c.token||
 async function publishGroup(manual){
  const c=getGH();if(!c.token){if(manual)toast("Najpierw połącz aplikację z GitHubem.");return false}
  if(pubBusy){pubTimer=setTimeout(()=>publishGroup(manual),4000);return false}
- const dane=groupDane(),h=strHash(JSON.stringify(dane));if(!manual&&h===lsGet(GPUB))return true;
+ const gpw=lsGet(GPW);if(!gpw){if(manual)toast("Najpierw ustaw hasło grupy w Ustawieniach.");return false}
+ const dane=groupDane(),h=strHash(JSON.stringify(dane)+"|"+strHash(gpw));if(!manual&&h===lsGet(GPUB))return true;
  if(!navigator.onLine){if(manual)toast("Brak internetu. Opublikuję, gdy będziesz online.");return false}
  pubBusy=true;const api=`https://api.github.com/repos/${c.owner}/${c.repo}/contents/grupa.json`;
  const headers={"Authorization":"Bearer "+c.token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"};
  try{let sha;const g=await fetch(api,{headers,cache:"no-store"});if(g.ok)sha=(await g.json()).sha;else if(g.status!==404)throw new Error(g.status);
-  const body={message:"Aktualizacja dla grupy "+new Date().toLocaleString("pl-PL"),content:b64(JSON.stringify({aplikacja:"Memento Egzamini",typ:"grupa",wersja:1,zapisano:new Date().toISOString(),dane},null,1))};if(sha)body.sha=sha;
+  const body={message:"Aktualizacja dla grupy "+new Date().toLocaleString("pl-PL"),content:b64(JSON.stringify(await encryptGroup(dane,gpw)))};if(sha)body.sha=sha;
   const r=await fetch(api,{method:"PUT",headers:{...headers,"Content-Type":"application/json"},body:JSON.stringify(body)});
   if(!r.ok)throw new Error(r.status);
   lsSet(GPUB,h);lsSet(GPUBT,new Date().toISOString());toast(manual?"Opublikowano. Koledzy zobaczą zmiany w ciągu kilku minut.":"Zmiany wysłane do grupy");if($("#bdlg").open)$("#groupInfo").textContent=groupInfoText();return true
  }catch(err){const m=String(err.message);toast(m==="401"||m==="403"?"GitHub odrzucił token. Sprawdź go w Ustawieniach.":m==="404"?"Nie znaleziono repozytorium albo token nie ma do niego dostępu.":"Nie udało się opublikować. Spróbuję przy następnej zmianie.");return false}
  finally{pubBusy=false}}
 $("#pubBtn").onclick=()=>publishGroup(true);
+$("#grpPwSave").onclick=async()=>{const v=$("#grpPw").value.trim();
+ if(isStarosta()){if(v.length<8){toast("Hasło grupy musi mieć co najmniej 8 znaków.");return}lsSet(GPW,v);openSettings();toast("Zapisano hasło grupy");if(getGH().token)publishGroup(true);return}
+ if(!v)return;lsSet(GPW,v);lsSet(GSYNC,null);lastFetch=0;S.needPw=false;toast("Zapisano hasło");fetchGroup()};
 $("#ghBtn").onclick=()=>{const c=getGH();$("#ghToken").value=c.token||"";$("#ghAuto").checked=c.auto!==false;$("#ghBox").hidden=!$("#ghBox").hidden;if(!$("#ghBox").hidden)$("#ghToken").focus()};
 $("#ghSave").onclick=async()=>{const t=$("#ghToken").value.trim();if(!t){toast("Wklej token GitHuba.");return}
  const c=getGH();c.token=t;c.auto=$("#ghAuto").checked;lsSet(GH,JSON.stringify(c));lsSet(GPUB,null);
@@ -687,6 +716,7 @@ document.addEventListener("change",async e=>{
  if(!e.target.matches("input[data-import]"))return;const f=e.target.files[0];e.target.value="";if(!f)return;
  let o;try{o=JSON.parse(await f.text())}catch(_){toast("Nie udało się odczytać pliku.");return}
  if(!o||typeof o.dane!=="object"){toast("To nie jest plik z Memento Egzamini.");return}
+ if(o.typ==="grupa-szyfr"){if(isStarosta()){toast("To plik dla grupy. W trybie starosty nie trzeba go wczytywać.");return}if(await handleEncrypted(o,false)&&$("#bdlg").open)$("#bdlg").close();return}
  if(o.typ==="grupa"){importGroup(o);return}
  if(e.target.id!=="importFile"){toast("To jest pełna kopia danych, nie plik dla grupy. Wczytaj ją przyciskiem „Wczytaj kopię”.");return}
  for(const c of Object.keys(S.data))S.data[c]=Array.isArray(o.dane[c])?o.dane[c].map(x=>({...x,id:x.id||uid()})):[];

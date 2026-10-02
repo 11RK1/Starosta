@@ -1,5 +1,5 @@
 // Memento Egzamini – praca offline. Podnieś numer wersji po każdej zmianie plików.
-const CACHE = "panel-starosty-v10";
+const CACHE = "panel-starosty-v12";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
