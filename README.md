@@ -2,7 +2,7 @@
 
 *Memento egzamini* – pamiętaj o egzaminie.
 
-Plan zajęć z USOS, terminy egzaminów, przedmioty i kontakty do prowadzących w jednej aplikacji na telefon i tablet.
+Plan zajęć z USOS, terminy egzaminów, przedmioty i kontakty do prowadzących w jednej aplikacji na telefon, tablet i komputer.
 
 **Adres aplikacji:** https://11rk1.github.io/Starosta/
 
