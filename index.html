@@ -194,6 +194,7 @@ details.past{margin-top:24px}details.past summary{cursor:pointer;color:var(--mut
   <button class="btn primary" type="button" id="pubBtn">Opublikuj teraz</button>
   <button class="btn" type="button" id="ghBtn">Połączenie z GitHubem</button>
   <button class="btn" type="button" id="shareGroupBtn">Wyślij jako plik</button>
+  <button class="btn danger" type="button" id="rotBtn">Nowy link kalendarza</button>
   <label class="btn filebtn" for="groupFile">Wczytaj plik od starosty<input type="file" id="groupFile" data-import accept=".json,application/json"></label>
  </div>
  <div id="ghBox" class="usosrow" hidden>
@@ -363,7 +364,7 @@ function changesBanner(f){let o=null;try{o=JSON.parse(lsGet(ZMIANY)||"null")}cat
  const kiedy=z=>`${esc(fmtDate(z.data))}, ${esc(z.od)}${miejsce(z).tryb?` (${miejsce(z).tryb==="online"?"Teams":"zjazd"})`:""}`;
  const line=c=>`<li><b>${esc(c.z.przedmiot)}</b>${c.z.typ&&c.z.typ!==c.z.przedmiot?` · ${esc(c.z.typ)}`:""}: ${c.rodzaj==="przeniesione"?`przeniesione z ${kiedy(c.z)} na <b>${kiedy(c.na)}</b>`:c.rodzaj==="odwolane"?`usunięte z planu (${kiedy(c.z)})`:`nowe zajęcia – <b>${kiedy(c.z)}</b>`}</li>`;
  return`<div class="changes"><div class="row"><b>Zmiany w planie zajęć</b><span class="due">${esc(plDate(o.czas))}</span></div><ul>${vis.map(line).join("")}</ul><p class="note" style="margin:0">Jeśli te zajęcia są w Twoim kalendarzu, popraw je tam ręcznie.</p><div><button class="btn" type="button" id="chgOk">OK, widzę</button></div></div>`}
-document.addEventListener("click",e=>{if(e.target.id==="chgOk"){lsSet(ZMIANY,null);render()}});
+document.addEventListener("click",e=>{if(e.target.id==="chgOk"){lsSet(ZMIANY,null);render()}if(e.target.id==="kalBtn"){const b=$("#kalBox");if(b)b.hidden=!b.hidden}});
 function render(){
  renderTabs();
  const SHARED=["terminy","przedmioty","kontakty","ogloszenia"];
@@ -389,9 +390,14 @@ function render(){
   <h2>Do zrobienia</h2><div class="list">${open.length?sortTask(open).slice(0,5).map(itemTask).join(""):empty("Wszystko zrobione.","zadania")}</div></div></div>`;
  } else if(S.tab==="zajecia"){
   const z=sortZ(D.zajecia);let h=`<h1>Plan zajęć</h1><p class="sub">Semestr zimowy. Dotknij zajęć, żeby je edytować.</p>
-  <div class="toolbar">${!isStarosta()?"":anyLink()?`<button class="btn primary" type="button" id="usosSync">Odśwież z USOS</button><button class="btn" type="button" id="usosLinkBtn">Linki USOS</button>`:`<button class="btn primary" type="button" id="usosLinkBtn">Połącz z USOS</button>`}${D.zajecia.some(x=>x.data&&x.data>=todayISO())?`<button class="btn" type="button" id="calZaj">Do kalendarza</button>`:""}</div>
+  <div class="toolbar">${!isStarosta()?"":anyLink()?`<button class="btn primary" type="button" id="usosSync">Odśwież z USOS</button><button class="btn" type="button" id="usosLinkBtn">Linki USOS</button>`:`<button class="btn primary" type="button" id="usosLinkBtn">Połącz z USOS</button>`}${kalUrl()?`<button class="btn primary" type="button" id="kalBtn">Kalendarz w telefonie</button>`:""}${D.zajecia.some(x=>x.data&&x.data>=todayISO())?`<button class="btn" type="button" id="calZaj">Do kalendarza</button>`:""}</div>
   ${anyLink()?`<p class="note" style="margin:-6px 0 14px">${esc(usosStatus())}</p>`:!isStarosta()?`<p class="note" style="margin:-6px 0 14px">Plan pobiera się automatycznie od starosty.</p>`:""}
-  <div class="note helpbox" id="usosHelpBox" hidden></div>`;
+  <div class="note helpbox" id="usosHelpBox" hidden></div>${kalUrl()?`<div class="note helpbox" id="kalBox" hidden>
+  <b>Kalendarz, który sam się aktualizuje.</b> Zasubskrybuj plan ${esc(SPECY[kalSpec()])} razem z terminami i komunikatami. Przeniesione zajęcia przesuną się w kalendarzu same.
+  <div class="toolbar" style="margin:10px 0"><a class="btn primary" href="${esc(kalUrl().replace(/^https:/,"webcal:"))}">Subskrybuj w kalendarzu</a><button class="btn" type="button" data-copy="${esc(kalUrl())}">Kopiuj link</button></div>
+  <b>iPhone/iPad:</b> stuknij „Subskrybuj w kalendarzu” i potwierdź. Żeby dostawać przypomnienia, w ustawieniach subskrypcji wyłącz <b>Usuń alerty</b>.<br>
+  <b>Android:</b> stuknij „Kopiuj link”, a potem na komputerze w calendar.google.com wybierz <b>Inne kalendarze → + → Z adresu URL</b> i wklej link.<br>
+  Dodaj subskrypcję tylko raz. Nie łącz jej z przyciskiem „Do kalendarza”, bo powstaną duplikaty. Linku nie wysyłaj poza grupę.</div>`:""}`;
   if(!z.length)h+=empty("Nie ma jeszcze żadnych zajęć.","zajecia");
   const tISO=todayISO(),dated=z.filter(x=>x.data),weekly=z.filter(x=>!x.data);
   const dates=[...new Set(dated.map(x=>x.data))].sort(),up=dates.filter(d=>d>=tISO),past=dates.filter(d=>d<tISO);
@@ -508,9 +514,9 @@ const ALERT_DOMYSLNE={terminy:["P1D","P7D"],zajecia:["PT1H"]};
 function fmtLocal(iso,time){const [y,m,d]=iso.split("-"),[h,mi]=time.split(":");return y+m+d+"T"+h.padStart(2,"0")+(mi||"00").padStart(2,"0")+"00"}
 function addMin(iso,time,min){const dt=new Date(iso+"T00:00");const [h,m]=time.split(":").map(Number);dt.setHours(h,(m||0)+min);return{iso:localISO(dt),time:hm(dt)}}
 // ev: {id,title,data,od?,do?,opis?,miejsce?}
-function makeICS(evs,alerts){
+function makeICS(evs,alerts,name){
  const stamp=new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
- const L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Memento Egzamini//PL","CALSCALE:GREGORIAN","METHOD:PUBLISH",
+ const L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Memento Egzamini//PL","CALSCALE:GREGORIAN","METHOD:PUBLISH",...(name?["X-WR-CALNAME:"+icsEsc(name),"X-WR-TIMEZONE:Europe/Warsaw","REFRESH-INTERVAL;VALUE=DURATION:PT1H","X-PUBLISHED-TTL:PT1H"]:[]),
   "BEGIN:VTIMEZONE","TZID:Europe/Warsaw","BEGIN:STANDARD","DTSTART:19701025T030000","RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU","TZOFFSETFROM:+0200","TZOFFSETTO:+0100","TZNAME:CET","END:STANDARD",
   "BEGIN:DAYLIGHT","DTSTART:19700329T020000","RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU","TZOFFSETFROM:+0100","TZOFFSETTO:+0200","TZNAME:CEST","END:DAYLIGHT","END:VTIMEZONE"];
  for(const t of evs){if(!t.data)continue;
@@ -521,7 +527,7 @@ function makeICS(evs,alerts){
   L.push("SUMMARY:"+icsEsc(t.title));
   if(t.miejsce)L.push("LOCATION:"+icsEsc(t.miejsce));
   if(t.opis)L.push("DESCRIPTION:"+icsEsc(t.opis));
-  for(const a of alerts)L.push("BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+icsEsc(t.title),"TRIGGER:-"+a,"END:VALARM");
+  for(const a of (t.alerts||alerts))L.push("BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+icsEsc(t.title),"TRIGGER:-"+a,"END:VALARM");
   L.push("END:VEVENT")}
  L.push("END:VCALENDAR");return L.map(icsFold).join("\r\n")+"\r\n"}
 const termToEv=t=>({id:t.id,title:(t.kategoria?t.kategoria+": ":"")+t.tytul,data:t.data,od:t.godz||"",opis:t.opis||""});
@@ -656,7 +662,7 @@ function openSettings(){lastBackupText();
  $("#grpPw").value=lsGet(GPW)||"";$("#grpPw").type=isStarosta()?"text":"password";
  $("#grpPwLabel").textContent=isStarosta()?"Hasło grupy – podaj je kolegom":"Hasło grupy od starosty";
  $("#grpPwNote").textContent=isStarosta()?(lsGet(GPW)?"Dane w grupa.json są zaszyfrowane tym hasłem. Po zmianie hasła podaj nowe kolegom.":"Ustaw hasło, zanim opublikujesz dane – bez niego nic nie zostanie wysłane."):"";
- $("#groupInfo").textContent=groupInfoText();for(const id of ["shareGroupBtn","pubBtn","ghBtn"])$("#"+id).hidden=!isStarosta();
+ $("#groupInfo").textContent=groupInfoText();for(const id of ["shareGroupBtn","pubBtn","ghBtn"])$("#"+id).hidden=!isStarosta();$("#rotBtn").hidden=!isStarosta()||!lsGet(GIST);$("#rotBtn").textContent="Nowy link kalendarza";$("#rotBtn").dataset.armed="";
  const cfg=getGH();$("#pubBtn").hidden=!isStarosta()||!cfg.token;$("#ghBox").hidden=true;$("#bdlg").showModal()}
 $("#backupBtn").onclick=openSettings;
 $("#bform").addEventListener("change",e=>{if(e.target.name==="spec"){lsSet("panel-starosty-spec",e.target.value);render();toast("Specjalizacja: "+SPECY[e.target.value]);return}
@@ -677,6 +683,30 @@ $("#shareGroupBtn").onclick=async()=>{
  if(!GRUPA.some(c=>dane[c].length)){toast("Najpierw dodaj terminy, przedmioty albo kontakty.");return}
  const json=JSON.stringify({aplikacja:"Memento Egzamini",typ:"grupa",wersja:1,zapisano:new Date().toISOString(),dane},null,2);
  try{if(await saveFile("dla-grupy-"+todayISO()+".json",json,"application/json",true))toast("Wyślij plik na grupę")}catch(_){toast("Nie udało się utworzyć pliku.")}};
+// Kalendarz do subskrypcji (osobny plik .ics dla każdej specjalizacji, w ukrytym Gist)
+const KAL="panel-starosty-kalendarze",GIST="panel-starosty-gist";
+const kalSpec=()=>mySpec()||"cyber";
+function kalUrl(){let o=null;try{o=JSON.parse(lsGet(KAL)||"null")}catch(e){}return o&&o[kalSpec()]||""}
+function calEvents(sp){const from=localISO(new Date(Date.now()-14*864e5));
+ const zaj=S.data.zajecia.filter(z=>z.zrodlo==="usos"&&z.spec===sp&&z.data&&z.data>=from).map(z=>({...zajToEv(z),alerts:["PT1H"]}));
+ const ter=S.data.terminy.filter(x=>doGrupy("terminy",x)&&forSpec(x,sp)&&x.data&&x.data>=from).map(x=>({...termToEv(x),alerts:/Egzamin|Kolokwium/.test(x.kategoria||"")?["P1D","P7D"]:["P1D"]}));
+ const ogl=(S.data.ogloszenia||[]).filter(x=>doGrupy("ogloszenia",x)&&forSpec(x,sp)&&x.data&&x.data>=from).map(x=>({id:x.id,title:x.tytul,data:x.data,od:"",alerts:["P3D","P1D"]}));
+ return[...zaj,...ter,...ogl]}
+async function publishCalendars(c,headers){
+ const files={};for(const sp of Object.keys(SPECY))files["plan-"+sp+".ics"]={content:makeICS(calEvents(sp),[],"Memento – "+SPECY[sp])};
+ let g={};try{g=JSON.parse(lsGet(GIST)||"{}")||{}}catch(e){}
+ const H={...headers,"Content-Type":"application/json"};let r=null;
+ if(g.id){r=await fetch("https://api.github.com/gists/"+g.id,{method:"PATCH",headers:H,body:JSON.stringify({files})});if(r.status===404)r=null}
+ if(!r)r=await fetch("https://api.github.com/gists",{method:"POST",headers:H,body:JSON.stringify({description:"Memento Egzamini – kalendarz grupy",public:false,files})});
+ if(!r.ok)throw new Error("gist "+r.status);
+ const j=await r.json(),owner=(j.owner&&j.owner.login)||c.owner;lsSet(GIST,JSON.stringify({id:j.id,owner}));
+ const urls={};for(const sp of Object.keys(SPECY))urls[sp]=`https://gist.githubusercontent.com/${owner}/${j.id}/raw/plan-${sp}.ics`;
+ lsSet(KAL,JSON.stringify(urls));return urls}
+// Nowy link kalendarza: usuwa stary Gist (stary link przestaje działać) i tworzy nowy
+async function rotateCalendar(){const c=getGH();if(!c.token){toast("Najpierw połącz aplikację z GitHubem.");return}
+ let g={};try{g=JSON.parse(lsGet(GIST)||"{}")||{}}catch(e){}
+ if(g.id){try{const r=await fetch("https://api.github.com/gists/"+g.id,{method:"DELETE",headers:{"Authorization":"Bearer "+c.token,"Accept":"application/vnd.github+json"}});if(!r.ok&&r.status!==404)throw 0}catch(_){toast("Nie udało się usunąć starego kalendarza. Spróbuj ponownie.");return}}
+ lsSet(GIST,null);lsSet(KAL,null);lsSet(GPUB,null);if(await publishGroup(true)){toast("Nowy link kalendarza gotowy. Stary przestał działać – koledzy muszą zasubskrybować ponownie.");render()}}
 function groupDane(){const dane={};for(const c of GRUPA)dane[c]=S.data[c].filter(x=>doGrupy(c,x)).map(({utworzono,...x})=>x);return dane}
 function importGroup(o,auto){
  if(isStarosta()){if(!auto)toast("To plik dla grupy. W trybie starosty nie trzeba go wczytywać – zmień tryb w Ustawieniach.");return}
@@ -684,6 +714,9 @@ function importGroup(o,auto){
   const mapped=inc.map(x=>({...x,id:"g-"+(x.id||uid()),zrodlo:"grupa"}));
   if(c==="zajecia"){const prev=S.data.zajecia.filter(x=>x.zrodlo==="grupa");if(prev.length)recordChanges(diffPlan(prev,mapped))}
   S.data[c]=(S.data[c]||[]).filter(x=>x.zrodlo!=="grupa").concat(mapped)}
+ if(o.dane.kalendarze&&typeof o.dane.kalendarze==="object"){const prev=lsGet(KAL),nowy=JSON.stringify(o.dane.kalendarze);
+  if(prev&&prev!==nowy){lsSet(KAL,nowy);lsSet(GSYNC,o.zapisano||new Date().toISOString());persist();render();toast("Starosta zmienił link kalendarza – zasubskrybuj go ponownie: Plan → Kalendarz w telefonie");return}
+  lsSet(KAL,nowy)}
  lsSet(GSYNC,o.zapisano||new Date().toISOString());persist();render();if(!auto&&$("#bdlg").open)$("#bdlg").close();
  toast(auto?"Nowe informacje od starosty":"Wczytano informacje od starosty ("+n+")")}
 
@@ -735,13 +768,15 @@ async function publishGroup(manual){
  pubBusy=true;const api=`https://api.github.com/repos/${c.owner}/${c.repo}/contents/grupa.json`;
  const headers={"Authorization":"Bearer "+c.token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"};
  try{let sha;const g=await fetch(api,{headers,cache:"no-store"});if(g.ok)sha=(await g.json()).sha;else if(g.status!==404)throw new Error(g.status);
-  const body={message:"Aktualizacja dla grupy "+new Date().toLocaleString("pl-PL"),content:b64(JSON.stringify(await encryptGroup(dane,gpw)))};if(sha)body.sha=sha;
+  let kal=null,calErr=false;try{kal=await publishCalendars(c,headers)}catch(_){calErr=true;try{kal=JSON.parse(lsGet(KAL)||"null")}catch(e){}}
+  const body={message:"Aktualizacja dla grupy "+new Date().toLocaleString("pl-PL"),content:b64(JSON.stringify(await encryptGroup(kal?{...dane,kalendarze:kal}:dane,gpw)))};if(sha)body.sha=sha;
   const r=await fetch(api,{method:"PUT",headers:{...headers,"Content-Type":"application/json"},body:JSON.stringify(body)});
   if(!r.ok)throw new Error(r.status);
-  lsSet(GPUB,h);lsSet(GPUBT,new Date().toISOString());toast(manual?"Opublikowano. Koledzy zobaczą zmiany w ciągu kilku minut.":"Zmiany wysłane do grupy");if($("#bdlg").open)$("#groupInfo").textContent=groupInfoText();return true
+  lsSet(GPUB,h);lsSet(GPUBT,new Date().toISOString());toast(calErr?"Opublikowano dane, ale nie kalendarz – dodaj tokenowi uprawnienie Gists: Read and write.":manual?"Opublikowano. Koledzy zobaczą zmiany w ciągu kilku minut.":"Zmiany wysłane do grupy");if($("#bdlg").open)$("#groupInfo").textContent=groupInfoText();return true
  }catch(err){const m=String(err.message);toast(m==="401"||m==="403"?"GitHub odrzucił token. Sprawdź go w Ustawieniach.":m==="404"?"Nie znaleziono repozytorium albo token nie ma do niego dostępu.":"Nie udało się opublikować. Spróbuję przy następnej zmianie.");return false}
  finally{pubBusy=false}}
 $("#pubBtn").onclick=()=>publishGroup(true);
+$("#rotBtn").onclick=e=>{const b=e.currentTarget;if(b.dataset.armed!=="1"){b.dataset.armed="1";b.textContent="Na pewno? Stary link przestanie działać";return}b.dataset.armed="";b.textContent="Nowy link kalendarza";rotateCalendar()};
 $("#grpPwSave").onclick=async()=>{const v=$("#grpPw").value.trim();
  if(isStarosta()){if(v.length<8){toast("Hasło grupy musi mieć co najmniej 8 znaków.");return}lsSet(GPW,v);openSettings();toast("Zapisano hasło grupy");if(getGH().token)publishGroup(true);return}
  if(!v)return;lsSet(GPW,v);lsSet(GSYNC,null);lastFetch=0;S.needPw=false;toast("Zapisano hasło");fetchGroup()};

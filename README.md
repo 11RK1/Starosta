@@ -40,7 +40,7 @@ Dni ze zjazdem są oznaczone „Zjazd w Mińsku”, a dni w całości zdalne maj
 
 **Zmiany w planie.** Gdy plan w USOS się zmieni (przeniesione, odwołane albo nowe zajęcia), na ekranie Przegląd pojawi się ramka **Zmiany w planie zajęć** z listą zmian. Zniknie, gdy stukniesz **OK, widzę**.
 
-> Zajęcia dodane do kalendarza przyciskiem **Do kalendarza** to jednorazowa kopia, która nie przesunie się sama. Po zmianie w planie popraw je ręcznie albo zasubskrybuj swój plan z USOS bezpośrednio w kalendarzu telefonu (punkt 5).
+> Zajęcia dodane do kalendarza przyciskiem **Do kalendarza** to jednorazowa kopia, która nie przesunie się sama. Wygodniej jest zasubskrybować kalendarz, który aktualizuje się sam (punkt 5).
 
 ## 4. Informacje od starosty
 
@@ -61,15 +61,35 @@ W **Terminach** albo w **Planie** stuknij **Do kalendarza**, wybierz maksymalnie
 
 Każde wydarzenie dodawaj tylko raz, bo ponowne dodanie tworzy duplikaty.
 
-**Plan zajęć, który sam się aktualizuje w kalendarzu.** Zamiast dodawać zajęcia z aplikacji, możesz zasubskrybować swój plan z USOS:
-1. W **USOSweb** → **Mój USOSweb** → **Plan zajęć** wybierz eksport i skopiuj **Odnośnik do planu**.
-2. **iPhone/iPad:** **Ustawienia → Aplikacje → Kalendarz → Konta → Dodaj konto → Inne → Dodaj subskrybowany kalendarz**, wklej link i zapisz.
-   **Android:** na komputerze w calendar.google.com wybierz **Inne kalendarze → + → Z adresu URL** i wklej link.
+**Kalendarz, który sam się aktualizuje (polecane).** W **Planie** stuknij **Kalendarz w telefonie**:
+- **iPhone/iPad:** stuknij **Subskrybuj w kalendarzu** i potwierdź. Żeby dostawać przypomnienia, w ustawieniach subskrypcji wyłącz **Usuń alerty**.
+- **Android:** stuknij **Kopiuj link**, a potem na komputerze w calendar.google.com wybierz **Inne kalendarze → + → Z adresu URL** i wklej link.
 
-Przeniesione zajęcia przesuną się wtedy w kalendarzu same, zwykle w ciągu kilku godzin. Link jest prywatny, więc nie wysyłaj go nikomu.
+W kalendarzu pojawią się zajęcia Twojej specjalizacji (z przypomnieniem godzinę wcześniej), egzaminy i kolokwia oraz terminy z komunikatów, np. raty czesnego. Gdy starosta albo USOS coś zmieni, kalendarz zaktualizuje się sam: na iPhonie zwykle w ciągu godziny, w Kalendarzu Google w ciągu kilku do kilkunastu godzin. Dodaj subskrypcję tylko raz i nie łącz jej z przyciskiem **Do kalendarza**, bo powstaną duplikaty. Linku nie wysyłaj poza grupę. Jeśli starosta zmieni link, aplikacja Cię o tym poinformuje i trzeba będzie zasubskrybować kalendarz ponownie.
 
 ## 6. Kopia i przenoszenie danych
 
 **Ustawienia → Zapisz kopię do pliku** zapisuje wszystkie Twoje dane do jednego pliku. Plik możesz trzymać w iCloud Drive, na Dysku Google albo na pendrive. Na nowym urządzeniu wybierz **Ustawienia → Wczytaj kopię**.
 
 Usunięcie aplikacji z ekranu albo wyczyszczenie danych przeglądarki kasuje dane, dlatego rób kopię co jakiś czas.
+
+---
+
+## Dla starosty
+
+- W **Ustawieniach** wybierz tryb **Starosta** i swoją specjalizację.
+- **Plan → Połącz z USOS** (albo **Linki USOS**) ma dwa pola: plan Cyberbezpieczeństwa i plan Detektywów. Link Detektywów weź od kogoś z tej specjalizacji. Odśwież plan przed wysłaniem pliku grupie.
+- **Przegląd → Od starosty → + Dodaj komunikat** to okno na ważne informacje dla grupy, np. raty czesnego: tytuł, termin i treść wpisujesz ręcznie. Komunikat widzą wszyscy (albo tylko wybrana specjalizacja). Po terminie studentom znika, a u Ciebie zostaje wyszarzony, żeby łatwo było zmienić datę na kolejny miesiąc.
+- Przy terminach, przedmiotach i kontaktach ustaw pole **Dla kogo**: Cała grupa, Cyberbezpieczeństwo albo Detektywi. W zakładkach przełącznik **Wszyscy / Cyber / Detektywi** pokazuje, co widzi dana specjalizacja.
+- **Automatyczna publikacja (jednorazowa konfiguracja):**
+  1. Na github.com: zdjęcie profilowe → **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
+  2. Nazwa dowolna, **Expiration** np. 1 rok, **Repository access: Only select repositories → Starosta**.
+  3. **Permissions → Repositories → Add permissions → Contents: Read and write** oraz **Permissions → Account → Add permissions → Gists: Read and write** (to dla kalendarza). Potem **Generate token** i skopiuj token.
+  4. W aplikacji: **Ustawienia → Hasło grupy**, wpisz hasło (min. 8 znaków, najlepiej kilka słów) i stuknij **Zapisz hasło**.
+  5. **Ustawienia → Połączenie z GitHubem**, wklej token i stuknij **Zapisz i opublikuj**.
+
+  Bez hasła grupy aplikacja niczego nie opublikuje. Hasło podaj kolegom na Waszej grupie, a nie w repozytorium.
+
+  Od tej pory każda zmiana terminów, przedmiotów, kontaktów, komunikatów albo planu z USOS sama trafia do grupy po kilku sekundach. Aplikacja aktualizuje też kalendarze do subskrypcji, czyli ukryty Gist z plikami `plan-cyber.ics` i `plan-detektywi.ics`. Kalendarze nie są szyfrowane, bo telefon musi je odczytać, ale link do nich znają tylko osoby z hasłem grupy. Z komunikatów trafia tam tylko tytuł i termin. Jeśli link wycieknie, użyj **Ustawienia → Nowy link kalendarza**: stary link przestanie działać, a koledzy dostaną nowy w aplikacji. Token zostaje tylko na Twoim urządzeniu, nikomu go nie wysyłaj.
+- **Ustawienia → Wyślij jako plik** to zapasowy sposób bez GitHuba. Do publikacji i pliku trafia plan z USOS obu specjalizacji. Nie trafiają do niego kontakty z rolą „Student”, zajęcia dodane ręcznie, zadania ani linki do USOS.
+- Aktualizacja aplikacji: podmień pliki w repozytorium, a w `sw.js` zwiększ numer w `panel-starosty-vX`. Urządzenia pobiorą nową wersję przy kolejnym uruchomieniu.
