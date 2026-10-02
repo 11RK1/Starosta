@@ -121,6 +121,12 @@ fieldset.alerts{border:1px solid var(--line);border-radius:12px;padding:10px 14p
 .chk{display:flex;align-items:center;gap:10px;min-height:44px;font-size:.95rem;cursor:pointer}.chk input{width:22px;height:22px;accent-color:var(--accent);margin:0}
 h4.sect{font:600 .78rem var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:10px 0 0}
 .rolepick{display:flex;flex-direction:column}
+.pwrow{display:flex;gap:8px;align-items:flex-end;margin-top:6px}.pwrow .fl{flex:1}
+.usosrows{display:flex;flex-direction:column;gap:12px}
+.usosrow{display:flex;flex-direction:column;gap:8px}
+.usosrow .filebtn{align-self:flex-start}
+.daytag{font:600 .72rem var(--body);letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;vertical-align:middle;margin-left:6px;background:var(--accent-soft);color:var(--accent)}
+.daytag.on{background:transparent;border:1px solid var(--line);color:var(--muted)}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:0 0 14px;background:var(--surface)}
 .segb{font:600 .9rem var(--body);background:none;border:0;color:var(--muted);padding:9px 14px;min-height:40px;cursor:pointer}
 .segb+.segb{border-left:1px solid var(--line)}
@@ -156,18 +162,21 @@ details.past{margin-top:24px}details.past summary{cursor:pointer;color:var(--mut
  <div class="actions"><button class="btn" type="button" id="calCancel">Anuluj</button><button class="btn primary" type="submit">Utwórz plik kalendarza</button></div>
 </form></dialog>
 <dialog id="udlg"><form class="f" method="dialog" id="uform">
- <h3>Połącz z USOS</h3>
- <p class="note" style="margin:0">W USOSweb wejdź w <b>Mój USOSweb → Plan zajęć → Eksport</b>, skopiuj odnośnik do planu i wklej go tutaj. Link zostaje tylko na tym urządzeniu.</p>
- <label class="fl" for="usosUrl">Odnośnik do planu<input id="usosUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://usosapi…/services/tt/upcoming_ical?…"></label>
+ <h3>Plan z USOS</h3>
+ <p class="note" style="margin:0">W USOSweb wejdź w <b>Mój USOSweb → Plan zajęć → Eksport</b>, skopiuj odnośnik do planu i wklej go poniżej. Linki zostają tylko na tym urządzeniu. Żeby odłączyć link, wyczyść pole.</p>
+ <div id="usosRows" class="usosrows"></div>
  <p class="note" id="usosErr" style="margin:0;color:var(--accent)" hidden></p>
- <div class="actions"><button class="btn danger" type="button" id="usosForget" hidden>Odłącz</button><span class="spacer"></span><button class="btn" type="button" id="usosCancel">Anuluj</button><button class="btn primary" type="submit">Zapisz i pobierz</button></div>
+ <div class="actions"><button class="btn" type="button" id="usosCancel">Anuluj</button><button class="btn primary" type="submit">Zapisz i pobierz</button></div>
 </form></dialog>
 <dialog id="bdlg"><form class="f backup" method="dialog" id="bform">
  <h3>Ustawienia</h3>
  <fieldset class="alerts"><legend>Tryb aplikacji</legend><div class="rolepick">
   <label class="chk"><input type="radio" name="rola" value="starosta">Starosta – udostępniam informacje grupie</label>
   <label class="chk"><input type="radio" name="rola" value="student">Student – wczytuję plik od starosty</label>
- </div></fieldset>
+ </div>
+ <div id="pwRow" class="pwrow" hidden><label class="fl" for="pwInput">Hasło starosty<input id="pwInput" type="password" autocomplete="current-password"></label><button class="btn primary" type="button" id="pwBtn">Odblokuj</button></div>
+ <p class="note" id="pwErr" style="margin:6px 0 0;color:var(--accent)" hidden>Nieprawidłowe hasło.</p>
+ </fieldset>
  <fieldset class="alerts"><legend>Moja specjalizacja</legend><div class="rolepick">
   <label class="chk"><input type="radio" name="spec" value="cyber">Cyberbezpieczeństwo</label>
   <label class="chk"><input type="radio" name="spec" value="detektywi">Detektywi</label>
@@ -203,6 +212,7 @@ const ICON={
 const COLS={
  zajecia:{label:"Zajęcia",fields:[
   {k:"przedmiot",l:"Przedmiot",req:1},
+  {k:"spec",l:"Dla kogo",type:"select",opts:["cyber","detektywi"],optl:{cyber:"Cyberbezpieczeństwo",detektywi:"Detektywi"},blank:"Cała grupa",only:"starosta"},
   {k:"typ",l:"Forma",type:"select",opts:["Wykład","Ćwiczenia","Konwersatorium","Seminarium","Laboratorium","Inne"]},
   {k:"data",l:"Data (zostaw puste, jeśli zajęcia są co tydzień)",type:"date"},
   {k:"dzien",l:"Dzień tygodnia (dla zajęć co tydzień)",type:"select",opts:[1,2,3,4,5,6,7],optl:DNI},
@@ -274,9 +284,17 @@ function renderTabs(){
  $("#addBtn").hidden=!S.canEdit;
 }
 
-function itemZaj(z){return`<button class="item" type="button" data-c="zajecia" data-id="${z.id}">
+// Józefów w USOS = zajęcia online na Teams, Mińsk Mazowiecki = zjazd stacjonarny
+const shortAddr=s=>(s||"").replace(/,?\s*Polska\s*$/i,"").replace(/\b\d{2}-\d{3}\s*/,"").trim();
+function miejsce(z){const s=z.sala||"";
+ if(/j[óo]zef[óo]w/i.test(s))return{tryb:"online",txt:"Online · MS Teams"};
+ if(/mi[ńn]sk/i.test(s))return{tryb:"zjazd",txt:"Zjazd · "+shortAddr(s)};
+ return{tryb:"",txt:shortAddr(s)}}
+function itemZaj(z){const m=miejsce(z);return`<button class="item" type="button" data-c="zajecia" data-id="${z.id}">
  <div class="time">${esc(z.od||"––")}<span>${esc(z.do||"")}</span></div>
- <div class="main"><div class="t">${esc(z.przedmiot)}</div><div class="m">${[z.typ,z.sala,z.prowadzacy].filter(Boolean).map(esc).join(" · ")}</div>${z.uwagi?`<div class="m">${esc(z.uwagi)}</div>`:""}</div></button>`}
+ <div class="main"><div class="t">${esc(z.przedmiot)}</div><div class="m">${[z.typ,m.txt,z.prowadzacy].filter(Boolean).map(esc).join(" · ")}${src(z)}</div>${z.uwagi?`<div class="m">${esc(z.uwagi)}</div>`:""}</div>
+ ${m.tryb==="online"?`<span class="chip n">Teams</span>`:m.tryb==="zjazd"?`<span class="chip">Zjazd</span>`:""}</button>`}
+function dayTag(list){const t=list.map(z=>miejsce(z).tryb);if(t.includes("zjazd"))return`<span class="daytag">Zjazd w Mińsku</span>`;if(t.length&&t.every(x=>x==="online"))return`<span class="daytag on">Online</span>`;return""}
 function itemTerm(t){const n=daysTo(t.data);return`<button class="item" type="button" data-c="terminy" data-id="${t.id}">
  <div class="main"><div class="t">${esc(t.tytul)}</div><div class="m">${esc(fmtDate(t.data))}${t.godz?", "+esc(t.godz):""}${t.opis?" · "+esc(t.opis):""}${src(t)}</div></div>
  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">${t.kategoria?`<span class="chip${t.kategoria==="Egzamin"||t.kategoria==="Kolokwium"?"":" n"}">${esc(t.kategoria)}</span>`:""}<span class="due${n!==null&&n>=0&&n<=7?" soon":""}${n<0?" past":""}">${dueLabel(t.data)}</span></div></button>`}
@@ -298,7 +316,7 @@ function render(){
  renderTabs();
  const SHARED=["terminy","przedmioty","kontakty"];
  const filt=S.tab==="home"||!isStarosta()?(mySpec()||"all"):(S.specFilter||"all");
- const D={...S.data};for(const c of SHARED)D[c]=S.data[c].filter(x=>forSpec(x,filt));const v=$("#view");
+ const D={...S.data};for(const c of SHARED)D[c]=S.data[c].filter(x=>forSpec(x,filt));D.zajecia=S.data.zajecia.filter(z=>visZaj(z,filt));const v=$("#view");
  if(!S.loaded){v.innerHTML=`<p class="sub">Wczytywanie danych…</p>`;return}
  if(S.tab==="home"){
   const tISO=todayISO(),today=byTime(D.zajecia.filter(z=>onDay(z,tISO)));
@@ -313,18 +331,18 @@ function render(){
   <div class="stat"><b>${week}</b><span>terminów w 7 dni</span></div>
   <div class="stat"><b>${open.length}</b><span>zadań otwartych</span></div></div>
   <div class="cols"><div><h2>Dziś na uczelni</h2><div class="list">${today.length?today.map(itemZaj).join(""):empty(D.zajecia.length?"Dziś nie masz zajęć.":"Dodaj plan zajęć, a tu pojawi się rozkład dnia.",D.zajecia.length?null:"zajecia")}</div>
-  ${nextCls.length?`<h2>Najbliższe zajęcia · ${esc(longDate(nextDay))} (${dueLabel(nextDay)})</h2><div class="list">${nextCls.map(itemZaj).join("")}</div>`:""}</div>
+  ${nextCls.length?`<h2>Najbliższe zajęcia · ${esc(longDate(nextDay))} (${dueLabel(nextDay)})${dayTag(nextCls)}</h2><div class="list">${nextCls.map(itemZaj).join("")}</div>`:""}</div>
   <div><h2>Najbliższe terminy</h2><div class="list">${next.length?next.map(itemTerm).join(""):empty("Brak nadchodzących terminów. Dodaj kolokwia, egzaminy i daty z dziekanatu.","terminy")}</div>
   <h2>Do zrobienia</h2><div class="list">${open.length?sortTask(open).slice(0,5).map(itemTask).join(""):empty("Wszystko zrobione.","zadania")}</div></div></div>`;
  } else if(S.tab==="zajecia"){
   const z=sortZ(D.zajecia);let h=`<h1>Plan zajęć</h1><p class="sub">Semestr zimowy. Dotknij zajęć, żeby je edytować.</p>
-  <div class="toolbar">${usosLink()?`<button class="btn primary" type="button" id="usosSync">Odśwież z USOS</button><button class="btn" type="button" id="usosLinkBtn">Zmień link</button>`:`<button class="btn primary" type="button" id="usosLinkBtn">Połącz z USOS</button>`}${D.zajecia.some(x=>x.data&&x.data>=todayISO())?`<button class="btn" type="button" id="calZaj">Zjazdy do kalendarza</button>`:""}<label class="btn filebtn" for="usosFile">Import z pliku .ics<input type="file" id="usosFile" accept=".ics,text/calendar"></label></div>
-  ${usosLink()?`<p class="note" style="margin:-6px 0 14px">${esc(usosStatus())}</p>`:""}
+  <div class="toolbar">${anyLink()?`<button class="btn primary" type="button" id="usosSync">Odśwież z USOS</button><button class="btn" type="button" id="usosLinkBtn">Linki USOS</button>`:`<button class="btn${isStarosta()?" primary":""}" type="button" id="usosLinkBtn">Połącz z USOS</button>`}${D.zajecia.some(x=>x.data&&x.data>=todayISO())?`<button class="btn" type="button" id="calZaj">Do kalendarza</button>`:""}</div>
+  ${anyLink()?`<p class="note" style="margin:-6px 0 14px">${esc(usosStatus())}</p>`:!isStarosta()?`<p class="note" style="margin:-6px 0 14px">Plan dostajesz w pliku od starosty. Możesz też podłączyć własny link z USOS.</p>`:""}
   <div class="note helpbox" id="usosHelpBox" hidden></div>`;
   if(!z.length)h+=empty("Nie ma jeszcze żadnych zajęć.","zajecia");
   const tISO=todayISO(),dated=z.filter(x=>x.data),weekly=z.filter(x=>!x.data);
   const dates=[...new Set(dated.map(x=>x.data))].sort(),up=dates.filter(d=>d>=tISO),past=dates.filter(d=>d<tISO);
-  const dayBlock=d=>`<div><div class="daylabel${d===tISO?" today":""}">${esc(longDate(d))}${d!==tISO?` <span class="due">${dueLabel(d)}</span>`:""}</div><div class="list">${byTime(dated.filter(x=>x.data===d)).map(itemZaj).join("")}</div></div>`;
+  const dayBlock=d=>`<div><div class="daylabel${d===tISO?" today":""}">${esc(longDate(d))}${d!==tISO?` <span class="due">${dueLabel(d)}</span>`:""}${dayTag(dated.filter(x=>x.data===d))}</div><div class="list">${byTime(dated.filter(x=>x.data===d)).map(itemZaj).join("")}</div></div>`;
   if(up.length)h+=`<div class="days">${up.map(dayBlock).join("")}</div>`;
   else if(dated.length)h+=empty("Brak nadchodzących zajęć z datą.",null);
   if(weekly.length){h+=`<h2>Zajęcia co tydzień</h2><div class="days">`;
@@ -361,7 +379,7 @@ function render(){
   <div class="list">${open.length?open.map(itemTask).join(""):empty("Nic nie czeka.","zadania")}</div>
   ${done.length?`<h2>Zrobione</h2><div class="list">${done.map(itemTask).join("")}</div>`:""}`;
  }
- if(isStarosta()&&SHARED.includes(S.tab)){const h1=v.querySelector("h1");if(h1)h1.insertAdjacentHTML("afterend",`<div class="seg" role="group" aria-label="Pokaż">${[["all","Wszyscy"],["cyber","Cyber"],["detektywi","Detektywi"]].map(([k,l])=>`<button type="button" class="segb" data-spec="${k}" aria-pressed="${(S.specFilter||"all")===k}">${l}</button>`).join("")}</div>`)}
+ if(isStarosta()&&(SHARED.includes(S.tab)||S.tab==="zajecia")){const h1=v.querySelector("h1");if(h1)h1.insertAdjacentHTML("afterend",`<div class="seg" role="group" aria-label="Pokaż">${[["all","Wszyscy"],["cyber","Cyber"],["detektywi","Detektywi"]].map(([k,l])=>`<button type="button" class="segb" data-spec="${k}" aria-pressed="${(S.specFilter||"all")===k}">${l}</button>`).join("")}</div>`)}
  if(S.tab==="home"&&!mySpec()){const h1=v.querySelector("h1");if(h1)h1.insertAdjacentHTML("afterend",`<div class="install"><b>Wybierz swoją specjalizację</b>, żeby widzieć tylko swoje terminy i zaliczenia.<div class="toolbar" style="margin:8px 0 0">${Object.entries(SPECY).map(([k,l])=>`<button class="btn primary" type="button" data-setspec="${k}">${l}</button>`).join("")}</div></div>`)}
 }
 
@@ -453,7 +471,7 @@ function makeICS(evs,alerts){
   L.push("END:VEVENT")}
  L.push("END:VCALENDAR");return L.map(icsFold).join("\r\n")+"\r\n"}
 const termToEv=t=>({id:t.id,title:(t.kategoria?t.kategoria+": ":"")+t.tytul,data:t.data,od:t.godz||"",opis:t.opis||""});
-const zajToEv=z=>({id:z.id,title:(z.typ?z.typ+": ":"")+z.przedmiot,data:z.data,od:z.od||"",do:z.do||"",miejsce:z.sala||"",opis:[z.prowadzacy,z.uwagi].filter(Boolean).join("\n")});
+const zajToEv=z=>({id:z.id,title:(z.typ?z.typ+": ":"")+z.przedmiot+(miejsce(z).tryb==="online"?" (Teams)":""),data:z.data,od:z.od||"",do:z.do||"",miejsce:miejsce(z).tryb==="online"?"MS Teams (online)":z.sala||"",opis:[z.prowadzacy,z.uwagi].filter(Boolean).join("\n")});
 let calJob=null;
 function addToCalendar(kind,evs){
  evs=evs.filter(e=>e.data);if(!evs.length){toast(kind==="terminy"?"Najpierw ustaw datę terminu.":"Brak nadchodzących zajęć z datą.");return}
@@ -495,50 +513,71 @@ function splitSummary(sum){sum=(sum||"").trim();
  m=sum.match(/^(.+?)\s*[-–,(]\s*(wykład|wyklad|ćwiczenia|cwiczenia|konwersatorium|seminarium|laboratorium|lektorat|projekt|warsztaty)\b.*$/i);
  if(m)return{typ:m[2].charAt(0).toUpperCase()+m[2].slice(1).toLowerCase().replace("wyklad","wykład").replace("cwiczenia","ćwiczenia"),nazwa:m[1].trim()};
  return{typ:"",nazwa:sum}}
-function importUSOS(text){
+function importUSOS(text,spec){
  const evs=parseICS(text).filter(e=>e.DTSTART&&!e.DTSTART.date&&e.SUMMARY);
  if(!evs.length)return 0;
  const seen=new Set(),nowe=[];
  for(const e of evs){const st=icsToLocal(e.DTSTART),en=e.DTEND?icsToLocal(e.DTEND):new Date(st.getTime()+90*6e4);
   const data=localISO(st),od=hm(st),dou=hm(en),key=[e.SUMMARY,data,od].join("|");if(seen.has(key))continue;seen.add(key);
   const {typ,nazwa}=splitSummary(e.SUMMARY);const desc=(e.DESCRIPTION||"").split("\n")[0].trim();
-  nowe.push({id:"usos-"+data+"-"+od.replace(":","")+"-"+nowe.length,zrodlo:"usos",przedmiot:nazwa,typ,data,dzien:st.getDay()||7,od,do:dou,sala:e.LOCATION||"",prowadzacy:"",uwagi:desc.length<=140?desc:"",utworzono:new Date().toISOString()})}
- S.data.zajecia=S.data.zajecia.filter(z=>z.zrodlo!=="usos").concat(nowe);persist();render();return nowe.length}
+  nowe.push({id:"usos-"+spec+"-"+data+"-"+od.replace(":","")+"-"+nowe.length,zrodlo:"usos",spec,przedmiot:nazwa,typ,data,dzien:st.getDay()||7,od,do:dou,sala:e.LOCATION||"",prowadzacy:"",uwagi:desc.length<=140?desc:"",utworzono:new Date().toISOString()})}
+ S.data.zajecia=S.data.zajecia.filter(z=>!(z.zrodlo==="usos"&&(z.spec===spec||!z.spec))).concat(nowe);persist();render();return nowe.length}
 
 // Synchronizacja z linku USOS
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function lsSet(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}
-const usosLink=()=>lsGet(ULINK)||"";
-function usosStatus(){const t=lsGet(USYNC);return t?"Ostatnio pobrano z USOS: "+new Date(t).toLocaleString("pl-PL",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"}):"Plan z USOS nie był jeszcze pobrany."}
-function showUsosFallback(){
- const url=usosLink();S.tab="zajecia";render();const b=$("#usosHelpBox");if(!b)return;
- b.innerHTML=`USOS nie pozwolił aplikacji pobrać planu bezpośrednio. Zrób to ręcznie: przytrzymaj palcem przycisk poniżej, wybierz <b>Pobierz plik połączony</b>, a potem tutaj stuknij <b>Import z pliku .ics</b> i wskaż plik z folderu Pobrane.<div style="margin-top:10px"><a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Plik planu z USOS</a></div>`;
+const LINKS="panel-starosty-usos-links";
+function getLinks(){let o={};try{o=JSON.parse(lsGet(LINKS)||"{}")||{}}catch(e){}
+ const old=lsGet(ULINK);if(old){o[mySpec()||"cyber"]=old;lsSet(ULINK,null);lsSet(LINKS,JSON.stringify(o))}
+ for(const k of Object.keys(o))if(!o[k])delete o[k];return o}
+const anyLink=()=>Object.keys(getLinks()).length>0;
+const ownSpec=()=>mySpec()||"cyber";
+const linkSpecs=()=>isStarosta()?["cyber","detektywi"]:[ownSpec()];
+function visZaj(z,f){
+ if(!isStarosta()){if(z.zrodlo==="usos")return true;if(z.zrodlo==="grupa"&&anyLink())return false}
+ return forSpec(z,f)}
+function usosStatus(){const L=getLinks();return Object.keys(L).map(sp=>{const t=lsGet(USYNC+"-"+sp);return(isStarosta()?SPECY[sp]+": ":"")+(t?"pobrano "+new Date(t).toLocaleString("pl-PL",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"}):"jeszcze nie pobrano")}).join(" · ")}
+function showUsosFallback(sp,url){
+ S.tab="zajecia";render();const b=$("#usosHelpBox");if(!b)return;
+ b.innerHTML=`USOS nie pozwolił pobrać planu${isStarosta()?" ("+esc(SPECY[sp])+")":""} bezpośrednio. Przytrzymaj palcem przycisk poniżej, wybierz <b>Pobierz plik połączony</b>, a potem wczytaj ten plik.<div class="toolbar" style="margin:10px 0 0"><a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Plik planu z USOS</a><label class="btn filebtn" for="icsFb">Wczytaj plik .ics<input type="file" id="icsFb" data-icsspec="${sp}" accept=".ics,text/calendar"></label></div>`;
  b.hidden=false}
-async function syncUSOS(silent){
- const url=usosLink();if(!url)return false;
+async function syncOne(sp,url,silent){
+ const r=await fetch(url,{cache:"no-store",credentials:"omit"});
+ if(!r.ok)throw new Error("http "+r.status);
+ const text=await r.text();if(!/BEGIN:VCALENDAR/.test(text))throw new Error("format");
+ const n=importUSOS(text,sp);lsSet(USYNC+"-"+sp,new Date().toISOString());return n}
+async function syncUSOS(silent,only){
+ const L=getLinks(),specs=Object.keys(L).filter(sp=>!only||sp===only);if(!specs.length)return false;
  if(!navigator.onLine){if(!silent)toast("Brak internetu. Spróbuj później.");return false}
  if(!silent)toast("Pobieram plan z USOS…");
- try{const r=await fetch(url,{cache:"no-store",credentials:"omit"});
-  if(!r.ok)throw new Error("http "+r.status);
-  const text=await r.text();if(!/BEGIN:VCALENDAR/.test(text))throw new Error("format");
-  const n=importUSOS(text);lsSet(USYNC,new Date().toISOString());render();
-  if(!silent)toast(n?"Zaktualizowano plan z USOS ("+n+")":"USOS nie zwrócił żadnych nadchodzących zajęć.");return true
- }catch(err){if(!silent){if(String(err.message).startsWith("http 4"))toast("USOS odrzucił link. Skopiuj go ponownie z USOSweb.");else showUsosFallback()}return false}}
+ const ok=[];let fail=null;
+ for(const sp of specs){try{const n=await syncOne(sp,L[sp]);ok.push((isStarosta()?SPECY[sp]+": ":"")+n)}catch(err){fail=fail||{sp,err}}}
+ render();
+ if(!silent){if(fail){if(String(fail.err.message).startsWith("http 4"))toast("USOS odrzucił link"+(isStarosta()?" ("+SPECY[fail.sp]+")":"")+". Skopiuj go ponownie z USOSweb.");else showUsosFallback(fail.sp,L[fail.sp])}
+  else toast("Zaktualizowano plan z USOS ("+ok.join(", ")+")")}
+ return !fail}
 function openUsosDialog(){
- const d=$("#udlg");$("#usosUrl").value=usosLink();$("#usosErr").hidden=true;$("#usosForget").hidden=!usosLink();d.showModal()}
+ const L=getLinks();
+ $("#usosRows").innerHTML=linkSpecs().map(sp=>`<div class="usosrow">
+  <label class="fl" for="usosUrl-${sp}">${isStarosta()?"Plan – "+SPECY[sp]:"Twój link z USOS (opcjonalnie)"}<input id="usosUrl-${sp}" data-spec-url="${sp}" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://usosapi…/services/tt/upcoming_ical?…" value="${esc(L[sp]||"")}"></label>
+  <label class="btn filebtn" for="usosIcs-${sp}">albo wczytaj plik .ics<input type="file" id="usosIcs-${sp}" data-icsspec="${sp}" accept=".ics,text/calendar"></label></div>`).join("")+
+  (isStarosta()?`<p class="note" style="margin:0">Link Detektywów weź od kogoś z tej specjalizacji. Plan obu specjalizacji trafi do pliku dla grupy.</p>`:`<p class="note" style="margin:0">Z własnym linkiem zobaczysz swój plan zamiast planu od starosty.</p>`);
+ $("#usosErr").hidden=true;$("#udlg").showModal()}
 $("#usosCancel").onclick=()=>$("#udlg").close();
-$("#usosForget").onclick=()=>{lsSet(ULINK,null);lsSet(USYNC,null);$("#udlg").close();render();toast("Odłączono USOS. Zaimportowane zajęcia zostały.")};
 $("#uform").addEventListener("submit",e=>{e.preventDefault();
- const v=$("#usosUrl").value.trim();
- if(!/^https:\/\/\S+$/i.test(v)||!/ical|\.ics/i.test(v)){$("#usosErr").textContent="To nie wygląda na odnośnik do planu z USOS. Skopiuj cały link z okna „Eksport planu zajęć”.";$("#usosErr").hidden=false;return}
- lsSet(ULINK,v);$("#udlg").close();render();syncUSOS(false)});
+ const L={};let bad=null;
+ for(const inp of document.querySelectorAll("[data-spec-url]")){const v=inp.value.trim();if(!v)continue;
+  if(!/^https:\/\/\S+$/i.test(v)||!/ical|\.ics/i.test(v)){bad=inp.dataset.specUrl;break}L[inp.dataset.specUrl]=v}
+ if(bad){$("#usosErr").textContent="Link"+(isStarosta()?" ("+SPECY[bad]+")":"")+" nie wygląda na odnośnik do planu z USOS. Skopiuj cały link z okna „Eksport planu zajęć”.";$("#usosErr").hidden=false;return}
+ lsSet(LINKS,JSON.stringify(L));$("#udlg").close();render();if(Object.keys(L).length)syncUSOS(false);else toast("Odłączono USOS. Zaimportowane zajęcia zostały.")});
 
 document.addEventListener("change",async e=>{
- if(e.target.id!=="usosFile")return;const f=e.target.files[0];e.target.value="";if(!f)return;
- try{const n=importUSOS(await f.text());toast(n?"Zaimportowano plan z USOS ("+n+")":"W pliku nie ma zajęć z godzinami.")}catch(_){toast("Nie udało się odczytać pliku z USOS.")}});
+ const sp=e.target.dataset&&e.target.dataset.icsspec;if(!sp)return;const f=e.target.files[0];e.target.value="";if(!f)return;
+ try{const n=importUSOS(await f.text(),sp);lsSet(USYNC+"-"+sp,new Date().toISOString());if($("#udlg").open)$("#udlg").close();render();
+  toast(n?"Wczytano plan"+(isStarosta()?" ("+SPECY[sp]+")":"")+": "+n+" zajęć":"W pliku nie ma zajęć z godzinami.")}catch(_){toast("Nie udało się odczytać pliku z USOS.")}});
 document.addEventListener("click",e=>{
  if(e.target.id==="calAll"){const f=isStarosta()?(S.specFilter||"all"):(mySpec()||"all");addToCalendar("terminy",sortT(S.data.terminy.filter(t=>daysTo(t.data)>=0&&forSpec(t,f))).map(termToEv))}
- if(e.target.id==="calZaj"){const t=todayISO();addToCalendar("zajecia",[...S.data.zajecia].filter(z=>z.data&&z.data>=t).sort((a,b)=>(a.data+a.od).localeCompare(b.data+b.od)).map(zajToEv))}
+ if(e.target.id==="calZaj"){const t=todayISO(),f=isStarosta()?(S.specFilter||"all"):(mySpec()||"all");addToCalendar("zajecia",S.data.zajecia.filter(z=>z.data&&z.data>=t&&visZaj(z,f)).sort((a,b)=>(a.data+a.od).localeCompare(b.data+b.od)).map(zajToEv))}
  if(e.target.id==="usosLinkBtn")openUsosDialog();
  if(e.target.id==="usosSync")syncUSOS(false)});
 
@@ -546,22 +585,35 @@ document.addEventListener("click",e=>{
 function lastBackupText(){let d=null;try{d=localStorage.getItem(META)}catch(e){}
  $("#lastBackup").textContent=d?"Ostatnia kopia: "+new Date(d).toLocaleString("pl-PL",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"}):"Nie zrobiłeś jeszcze żadnej kopii."}
 const src=x=>(isStarosta()&&SPECY[x.spec]?" · "+SPECY[x.spec]:"")+(x.zrodlo==="grupa"?" · od starosty":"");
-const hasGroup=()=>["terminy","przedmioty","kontakty"].some(c=>S.data[c].some(x=>x.zrodlo==="grupa"));
-const GRUPA=["terminy","przedmioty","kontakty"];
+const hasGroup=()=>["terminy","przedmioty","kontakty","zajecia"].some(c=>S.data[c].some(x=>x.zrodlo==="grupa"));
+const GRUPA=["terminy","przedmioty","kontakty","zajecia"];
+const doGrupy=(c,x)=>c==="zajecia"?x.zrodlo==="usos":(x.zrodlo!=="grupa"&&!(c==="kontakty"&&x.rola==="Student"));
 function groupInfoText(){
  if(isStarosta()){const n=S.data.terminy.filter(x=>x.zrodlo!=="grupa").length,p=S.data.przedmioty.filter(x=>x.zrodlo!=="grupa").length,k=S.data.kontakty.filter(x=>x.zrodlo!=="grupa"&&x.rola!=="Student").length;
-  const ile=sp=>GRUPA.reduce((a,c)=>a+S.data[c].filter(x=>x.zrodlo!=="grupa"&&x.spec===sp).length,0);
-  return`Plik dla grupy zawiera terminy (${n}), przedmioty (${p}) i kontakty (${k}); w tym tylko dla Cyber: ${ile("cyber")}, tylko dla Detektywów: ${ile("detektywi")}. Każdy zobaczy wpisy dla całej grupy i swojej specjalizacji. Kontakty z rolą „Student”, Twój plan, zadania i link do USOS zostają tylko u Ciebie. Wyślij plik na grupę, a po zmianach wyślij nowy.`}
- const g=lsGet(GSYNC);return g?"Ostatni plik od starosty: "+new Date(g).toLocaleString("pl-PL",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})+". Wczytaj nowszy, gdy starosta go wyśle – Twój plan i notatki zostaną.":"Starosta wysyła plik z terminami, przedmiotami i kontaktami. Wczytaj go tutaj – Twój plan i notatki zostaną."}
+  const ile=sp=>["terminy","przedmioty","kontakty"].reduce((a,c)=>a+S.data[c].filter(x=>doGrupy(c,x)&&x.spec===sp).length,0),pl=sp=>S.data.zajecia.filter(z=>z.zrodlo==="usos"&&z.spec===sp).length;
+  return`Plik dla grupy zawiera plan z USOS (zajęcia – Cyber: ${pl("cyber")}, Detektywi: ${pl("detektywi")}), terminy (${n}), przedmioty (${p}) i kontakty (${k}); w tym tylko dla Cyber: ${ile("cyber")}, tylko dla Detektywów: ${ile("detektywi")}. Każdy zobaczy wpisy dla całej grupy i swojej specjalizacji. Kontakty z rolą „Student”, zajęcia dodane ręcznie, zadania i linki do USOS zostają tylko u Ciebie. Wyślij plik na grupę, a po zmianach wyślij nowy.`}
+ const g=lsGet(GSYNC);return g?"Ostatni plik od starosty: "+new Date(g).toLocaleString("pl-PL",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})+". Wczytaj nowszy, gdy starosta go wyśle – Twój plan i notatki zostaną.":"Starosta wysyła plik z planem zajęć, terminami, przedmiotami i kontaktami. Wczytaj go tutaj – Twoje notatki zostaną."}
 function openSettings(){lastBackupText();
  document.querySelectorAll('#bform input[name=rola]').forEach(r=>r.checked=r.value===(isStarosta()?"starosta":"student"));
  document.querySelectorAll('#bform input[name=spec]').forEach(r=>r.checked=r.value===mySpec());
+ $("#pwRow").hidden=true;$("#pwErr").hidden=true;
  $("#groupInfo").textContent=groupInfoText();$("#shareGroupBtn").hidden=!isStarosta();$("#bdlg").showModal()}
 $("#backupBtn").onclick=openSettings;
 $("#bform").addEventListener("change",e=>{if(e.target.name==="spec"){lsSet("panel-starosty-spec",e.target.value);render();toast("Specjalizacja: "+SPECY[e.target.value]);return}
- if(e.target.name!=="rola")return;lsSet(ROLA,e.target.value);applyRole();render();openSettings();toast(e.target.value==="starosta"?"Tryb starosty":"Tryb studenta")});
+ if(e.target.name!=="rola")return;
+ if(e.target.value==="starosta"&&!isStarosta()){e.target.checked=false;document.querySelector('#bform input[name=rola][value=student]').checked=true;$("#pwRow").hidden=false;$("#pwErr").hidden=true;$("#pwInput").value="";$("#pwInput").focus();return}
+ setRole(e.target.value)});
+function setRole(r){lsSet(ROLA,r);$("#pwRow").hidden=true;applyRole();render();openSettings();toast(r==="starosta"?"Tryb starosty":"Tryb studenta")}
+// Hasło sprawdzane przez skrót SHA-256 – w kodzie nie ma hasła jawnym tekstem
+const PW_HASH="0251ff76a081b2f23cadffd05b55083145525d5d0833dd6020eb950dd84ed0d0";
+async function checkPw(){
+ const v=$("#pwInput").value;if(!v)return;
+ let hex="";try{const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("memento-egzamini:"+v));hex=[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}catch(_){}
+ if(hex===PW_HASH){$("#pwInput").value="";setRole("starosta")}else{$("#pwErr").hidden=false;$("#pwInput").select()}}
+$("#pwBtn").onclick=checkPw;
+$("#pwInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();checkPw()}});
 $("#shareGroupBtn").onclick=async()=>{
- const dane={};for(const c of GRUPA)dane[c]=S.data[c].filter(x=>x.zrodlo!=="grupa"&&!(c==="kontakty"&&x.rola==="Student"));
+ const dane={};for(const c of GRUPA)dane[c]=S.data[c].filter(x=>doGrupy(c,x));
  if(!GRUPA.some(c=>dane[c].length)){toast("Najpierw dodaj terminy, przedmioty albo kontakty.");return}
  const json=JSON.stringify({aplikacja:"Memento Egzamini",typ:"grupa",wersja:1,zapisano:new Date().toISOString(),dane},null,2);
  try{if(await saveFile("dla-grupy-"+todayISO()+".json",json,"application/json",true))toast("Wyślij plik na grupę")}catch(_){toast("Nie udało się utworzyć pliku.")}};
@@ -604,7 +656,7 @@ loadLocal();
 applyRole();
 render();
 // Automatyczne odświeżenie planu, jeśli minęło ponad 6 godzin
-(()=>{const t=lsGet(USYNC),old=S.data.zajecia.some(z=>z.zrodlo==="usos"&&!z.data);if(usosLink()&&(old||!t||Date.now()-new Date(t)>6*36e5))syncUSOS(true)})();
+(()=>{const L=getLinks(),old=S.data.zajecia.some(z=>z.zrodlo==="usos"&&(!z.data||!z.spec));for(const sp of Object.keys(L)){const t=lsGet(USYNC+"-"+sp);if(old||!t||Date.now()-new Date(t)>6*36e5)syncUSOS(true,sp)}})();
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>

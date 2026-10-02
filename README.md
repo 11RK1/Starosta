@@ -2,7 +2,7 @@
 
 *Memento egzamini* – pamiętaj o egzaminie.
 
-Plan zajęć z USOS, terminy egzaminów, przedmioty i kontakty do prowadzących w jednej aplikacji na telefon, tablet i komputer.
+Plan zajęć z USOS, terminy egzaminów, przedmioty i kontakty do prowadzących w jednej aplikacji na telefon i tablet.
 
 **Adres aplikacji:** https://11rk1.github.io/Starosta/
 
@@ -28,19 +28,27 @@ Wszystkie dane zostają na Twoim urządzeniu. Nic nie jest wysyłane na serwer, 
 
 Przy pierwszym uruchomieniu na ekranie Przegląd wybierz **Cyberbezpieczeństwo** albo **Detektywi**. Zobaczysz wtedy wpisy dla całej grupy i dla swojej specjalizacji. Specjalizację zmienisz w **Ustawieniach**.
 
-## 3. Plan zajęć z USOS
+## 3. Plan zajęć
 
-1. Zaloguj się do **USOSweb** → **Mój USOSweb** → **Plan zajęć**.
-2. Wybierz eksport planu i skopiuj **Odnośnik do planu** (ikona kopiowania obok linku).
-3. W aplikacji wejdź w **Plan** → **Połącz z USOS**, przytrzymaj palec w polu, wybierz **Wklej** i stuknij **Zapisz i pobierz**.
+Plan Twojej specjalizacji dostajesz w pliku od starosty (punkt 4). Nic więcej nie musisz robić.
 
-Plan odświeża się sam co kilka godzin. Możesz też odświeżyć go ręcznie przyciskiem **Odśwież z USOS**.
+Przy zajęciach zobaczysz, jak się odbywają:
+- **Teams** – zajęcia online na MS Teams (w USOS mają adres w Józefowie),
+- **Zjazd** – zajęcia stacjonarne w Mińsku Mazowieckim.
 
-> Link z USOS to prywatny klucz do Twojego planu, który działa bez logowania. Nie wysyłaj go nikomu.
+Dni ze zjazdem są oznaczone „Zjazd w Mińsku”, a dni w całości zdalne mają oznaczenie „Online”.
+
+**Własny link z USOS (opcjonalnie).** Jeśli chcesz, żeby plan aktualizował się sam:
+1. W **USOSweb** wejdź w **Mój USOSweb** → **Plan zajęć**, wybierz eksport i skopiuj **Odnośnik do planu**.
+2. W aplikacji wybierz **Plan** → **Połącz z USOS**, wklej link i stuknij **Zapisz i pobierz**.
+
+Z własnym linkiem widzisz swój plan zamiast planu od starosty, a odświeża się on automatycznie co kilka godzin.
+
+> Link z USOS to prywatny klucz do Twojego planu, który działa bez logowania. Nie wysyłaj go nikomu poza starostą.
 
 ## 4. Informacje od starosty
 
-Starosta co jakiś czas wysyła na grupę plik `dla-grupy-RRRR-MM-DD.json` z terminami egzaminów, warunkami zaliczeń i kontaktami do prowadzących.
+Starosta co jakiś czas wysyła na grupę plik `dla-grupy-RRRR-MM-DD.json` z planem zajęć, terminami egzaminów, warunkami zaliczeń i kontaktami do prowadzących.
 
 1. Zapisz plik na urządzeniu: na iPhonie i iPadzie przez **Zachowaj w Plikach**, na Androidzie trafi do **Pobranych**.
 2. W aplikacji stuknij **Wczytaj plik od starosty** na ekranie Przegląd albo w **Ustawienia → Wczytaj plik od starosty**.
@@ -67,6 +75,7 @@ Usunięcie aplikacji z ekranu albo wyczyszczenie danych przeglądarki kasuje dan
 ## Dla starosty
 
 - W **Ustawieniach** wybierz tryb **Starosta** i swoją specjalizację.
+- **Plan → Połącz z USOS** (albo **Linki USOS**) ma dwa pola: plan Cyberbezpieczeństwa i plan Detektywów. Link Detektywów weź od kogoś z tej specjalizacji. Odśwież plan przed wysłaniem pliku grupie.
 - Przy terminach, przedmiotach i kontaktach ustaw pole **Dla kogo**: Cała grupa, Cyberbezpieczeństwo albo Detektywi. W zakładkach przełącznik **Wszyscy / Cyber / Detektywi** pokazuje, co widzi dana specjalizacja.
-- **Ustawienia → Udostępnij grupie** tworzy plik z terminami, przedmiotami i kontaktami. Plik wyślij na grupę, a po każdej zmianie wyślij nowy. Do pliku nie trafiają kontakty z rolą „Student”, Twój plan, zadania ani link do USOS.
+- **Ustawienia → Udostępnij grupie** tworzy plik z terminami, przedmiotami i kontaktami. Plik wyślij na grupę, a po każdej zmianie wyślij nowy. Do pliku trafia plan z USOS obu specjalizacji. Nie trafiają do niego kontakty z rolą „Student”, zajęcia dodane ręcznie, zadania ani linki do USOS.
 - Aktualizacja aplikacji: podmień pliki w repozytorium, a w `sw.js` zwiększ numer w `panel-starosty-vX`. Urządzenia pobiorą nową wersję przy kolejnym uruchomieniu.
