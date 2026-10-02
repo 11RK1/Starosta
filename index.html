@@ -184,8 +184,16 @@ details.past{margin-top:24px}details.past summary{cursor:pointer;color:var(--mut
  <h4 class="sect">Informacje dla grupy</h4>
  <p id="groupInfo"></p>
  <div class="actions" style="justify-content:flex-start">
-  <button class="btn primary" type="button" id="shareGroupBtn">Udostępnij grupie</button>
+  <button class="btn primary" type="button" id="pubBtn">Opublikuj teraz</button>
+  <button class="btn" type="button" id="ghBtn">Połączenie z GitHubem</button>
+  <button class="btn" type="button" id="shareGroupBtn">Wyślij jako plik</button>
   <label class="btn filebtn" for="groupFile">Wczytaj plik od starosty<input type="file" id="groupFile" data-import accept=".json,application/json"></label>
+ </div>
+ <div id="ghBox" class="usosrow" hidden>
+  <p class="note" style="margin:0">Wklej token GitHuba z uprawnieniem <b>Contents: Read and write</b> tylko do repozytorium aplikacji. Token zostaje wyłącznie na tym urządzeniu.</p>
+  <label class="fl" for="ghToken">Token GitHuba<input id="ghToken" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…"></label>
+  <label class="chk"><input type="checkbox" id="ghAuto" checked>Publikuj automatycznie po każdej zmianie</label>
+  <div class="actions" style="justify-content:flex-start"><button class="btn primary" type="button" id="ghSave">Zapisz i opublikuj</button><button class="btn danger" type="button" id="ghForget">Usuń token</button></div>
  </div>
  <h4 class="sect">Kopia danych</h4>
  <p>Dane są zapisane tylko na tym urządzeniu. Zrób kopię do pliku i zapisz ją w aplikacji Pliki (iCloud Drive, Dysk Google albo pendrive). Z kopii przeniesiesz też dane na inne urządzenie.</p>
@@ -254,7 +262,7 @@ const S={tab:"home",data:{zajecia:[],terminy:[],przedmioty:[],kontakty:[],zadani
 const KEY="panel-starosty-dane",META="panel-starosty-kopia",ULINK="panel-starosty-usos-link",USYNC="panel-starosty-usos-sync";
 const ROLA="panel-starosty-rola",GSYNC="panel-starosty-grupa";
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
-function persist(){try{localStorage.setItem(KEY,JSON.stringify({wersja:1,dane:S.data}));return true}catch(e){toast("Nie udało się zapisać na urządzeniu. Zrób kopię do pliku.");return false}}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify({wersja:1,dane:S.data}));if(typeof schedulePublish==="function")schedulePublish();return true}catch(e){toast("Nie udało się zapisać na urządzeniu. Zrób kopię do pliku.");return false}}
 function loadLocal(){let raw=null;try{raw=localStorage.getItem(KEY)}catch(e){}
  if(raw){try{const o=JSON.parse(raw);for(const c of Object.keys(S.data))S.data[c]=Array.isArray(o.dane?.[c])?o.dane[c]:[]}catch(e){}
   if(!lsGet(ROLA))lsSet(ROLA,"starosta");return}
@@ -326,7 +334,7 @@ function render(){
   const open=D.zadania.filter(t=>!t.zrobione);
   const week=D.terminy.filter(t=>{const n=daysTo(t.data);return n>=0&&n<=7}).length;
   v.innerHTML=`<h1>${new Date().toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</h1>
-  ${installHint()}<p class="sub">${isStarosta()?"Wszystko, co potrzebne starości, w jednym miejscu.":"Plan, terminy i kontakty w jednym miejscu."}</p>${!isStarosta()&&!hasGroup()?`<div class="install">Masz plik od starosty z terminami i kontaktami? <div><label class="btn primary filebtn" for="groupFile2">Wczytaj plik od starosty<input type="file" id="groupFile2" data-import accept=".json,application/json"></label></div></div>`:""}
+  ${installHint()}<p class="sub">${isStarosta()?"Wszystko, co potrzebne starości, w jednym miejscu.":"Plan, terminy i kontakty w jednym miejscu."}</p>${!isStarosta()&&!hasGroup()?`<div class="install">Informacje od starosty (plan, terminy, kontakty) pojawią się tu automatycznie, gdy będziesz online. Masz plik od starosty? <div><label class="btn primary filebtn" for="groupFile2">Wczytaj plik od starosty<input type="file" id="groupFile2" data-import accept=".json,application/json"></label></div></div>`:""}
   <div class="stats"><div class="stat"><b>${today.length}</b><span>zajęć dziś</span></div>
   <div class="stat"><b>${week}</b><span>terminów w 7 dni</span></div>
   <div class="stat"><b>${open.length}</b><span>zadań otwartych</span></div></div>
@@ -591,13 +599,15 @@ const doGrupy=(c,x)=>c==="zajecia"?x.zrodlo==="usos":(x.zrodlo!=="grupa"&&!(c===
 function groupInfoText(){
  if(isStarosta()){const n=S.data.terminy.filter(x=>x.zrodlo!=="grupa").length,p=S.data.przedmioty.filter(x=>x.zrodlo!=="grupa").length,k=S.data.kontakty.filter(x=>x.zrodlo!=="grupa"&&x.rola!=="Student").length;
   const ile=sp=>["terminy","przedmioty","kontakty"].reduce((a,c)=>a+S.data[c].filter(x=>doGrupy(c,x)&&x.spec===sp).length,0),pl=sp=>S.data.zajecia.filter(z=>z.zrodlo==="usos"&&z.spec===sp).length;
-  return`Plik dla grupy zawiera plan z USOS (zajęcia – Cyber: ${pl("cyber")}, Detektywi: ${pl("detektywi")}), terminy (${n}), przedmioty (${p}) i kontakty (${k}); w tym tylko dla Cyber: ${ile("cyber")}, tylko dla Detektywów: ${ile("detektywi")}. Każdy zobaczy wpisy dla całej grupy i swojej specjalizacji. Kontakty z rolą „Student”, zajęcia dodane ręcznie, zadania i linki do USOS zostają tylko u Ciebie. Wyślij plik na grupę, a po zmianach wyślij nowy.`}
- const g=lsGet(GSYNC);return g?"Ostatni plik od starosty: "+new Date(g).toLocaleString("pl-PL",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})+". Wczytaj nowszy, gdy starosta go wyśle – Twój plan i notatki zostaną.":"Starosta wysyła plik z planem zajęć, terminami, przedmiotami i kontaktami. Wczytaj go tutaj – Twoje notatki zostaną."}
+  return`Plik dla grupy zawiera plan z USOS (zajęcia – Cyber: ${pl("cyber")}, Detektywi: ${pl("detektywi")}), terminy (${n}), przedmioty (${p}) i kontakty (${k}); w tym tylko dla Cyber: ${ile("cyber")}, tylko dla Detektywów: ${ile("detektywi")}. Każdy zobaczy wpisy dla całej grupy i swojej specjalizacji. Kontakty z rolą „Student”, zajęcia dodane ręcznie, zadania i linki do USOS zostają tylko u Ciebie. ${ghInfo()}`}
+ const g=lsGet(GSYNC);return"Plan, terminy, przedmioty i kontakty od starosty pobierają się automatycznie przy każdym uruchomieniu z internetem. "+(g?"Ostatnia aktualizacja od starosty: "+plDate(g)+".":"Jeszcze nic nie pobrano.")+" Twoje notatki i zadania zostają bez zmian."}
+const plDate=t=>new Date(t).toLocaleString("pl-PL",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"});
 function openSettings(){lastBackupText();
  document.querySelectorAll('#bform input[name=rola]').forEach(r=>r.checked=r.value===(isStarosta()?"starosta":"student"));
  document.querySelectorAll('#bform input[name=spec]').forEach(r=>r.checked=r.value===mySpec());
  $("#pwRow").hidden=true;$("#pwErr").hidden=true;
- $("#groupInfo").textContent=groupInfoText();$("#shareGroupBtn").hidden=!isStarosta();$("#bdlg").showModal()}
+ $("#groupInfo").textContent=groupInfoText();for(const id of ["shareGroupBtn","pubBtn","ghBtn"])$("#"+id).hidden=!isStarosta();
+ const cfg=getGH();$("#pubBtn").hidden=!isStarosta()||!cfg.token;$("#ghBox").hidden=true;$("#bdlg").showModal()}
 $("#backupBtn").onclick=openSettings;
 $("#bform").addEventListener("change",e=>{if(e.target.name==="spec"){lsSet("panel-starosty-spec",e.target.value);render();toast("Specjalizacja: "+SPECY[e.target.value]);return}
  if(e.target.name!=="rola")return;
@@ -613,16 +623,57 @@ async function checkPw(){
 $("#pwBtn").onclick=checkPw;
 $("#pwInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();checkPw()}});
 $("#shareGroupBtn").onclick=async()=>{
- const dane={};for(const c of GRUPA)dane[c]=S.data[c].filter(x=>doGrupy(c,x));
+ const dane=groupDane();
  if(!GRUPA.some(c=>dane[c].length)){toast("Najpierw dodaj terminy, przedmioty albo kontakty.");return}
  const json=JSON.stringify({aplikacja:"Memento Egzamini",typ:"grupa",wersja:1,zapisano:new Date().toISOString(),dane},null,2);
  try{if(await saveFile("dla-grupy-"+todayISO()+".json",json,"application/json",true))toast("Wyślij plik na grupę")}catch(_){toast("Nie udało się utworzyć pliku.")}};
-function importGroup(o){
- if(isStarosta()){toast("To plik dla grupy. W trybie starosty nie trzeba go wczytywać – zmień tryb w Ustawieniach.");return}
+function groupDane(){const dane={};for(const c of GRUPA)dane[c]=S.data[c].filter(x=>doGrupy(c,x)).map(({utworzono,...x})=>x);return dane}
+function importGroup(o,auto){
+ if(isStarosta()){if(!auto)toast("To plik dla grupy. W trybie starosty nie trzeba go wczytywać – zmień tryb w Ustawieniach.");return}
  let n=0;for(const c of GRUPA){const inc=Array.isArray(o.dane[c])?o.dane[c]:[];n+=inc.length;
   S.data[c]=S.data[c].filter(x=>x.zrodlo!=="grupa").concat(inc.map(x=>({...x,id:"g-"+(x.id||uid()),zrodlo:"grupa"})))}
- lsSet(GSYNC,o.zapisano||new Date().toISOString());persist();render();if($("#bdlg").open)$("#bdlg").close();
- toast("Wczytano informacje od starosty ("+n+")")}
+ lsSet(GSYNC,o.zapisano||new Date().toISOString());persist();render();if(!auto&&$("#bdlg").open)$("#bdlg").close();
+ toast(auto?"Nowe informacje od starosty":"Wczytano informacje od starosty ("+n+")")}
+
+// Automatyczne pobieranie informacji od starosty (plik grupa.json obok aplikacji)
+let lastFetch=0;
+async function fetchGroup(){
+ if(isStarosta()||!navigator.onLine||location.protocol!=="https:"||Date.now()-lastFetch<5*6e4)return;lastFetch=Date.now();
+ try{const r=await fetch("grupa.json",{cache:"no-store"});if(!r.ok)return;const o=await r.json();
+  if(!o||o.typ!=="grupa"||typeof o.dane!=="object")return;const last=lsGet(GSYNC);if(last&&o.zapisano&&o.zapisano<=last)return;importGroup(o,true)}catch(_){}}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")fetchGroup()});
+
+// Publikowanie dla grupy przez GitHub (tylko starosta, token zostaje na urządzeniu)
+const GH="panel-starosty-gh",GPUB="panel-starosty-grupa-pub",GPUBT="panel-starosty-grupa-pubtime";
+function getGH(){let o={};try{o=JSON.parse(lsGet(GH)||"{}")||{}}catch(e){}
+ if(!o.owner){const h=location.hostname.match(/^([^.]+)\.github\.io$/i);o.owner=h?h[1]:"11RK1"}
+ if(!o.repo)o.repo=(location.pathname.split("/").filter(Boolean)[0])||"Starosta";if(o.auto===undefined)o.auto=true;return o}
+function ghInfo(){const c=getGH();if(!c.token)return" Połącz aplikację z GitHubem, a zmiany będą trafiać do kolegów automatycznie – albo wysyłaj plik ręcznie.";
+ const t=lsGet(GPUBT);return" Publikacja przez GitHub jest włączona"+(c.auto?" (automatycznie po zmianach)":"")+". "+(t?"Ostatnia publikacja: "+plDate(t)+".":"")}
+const strHash=str=>{let h=5381;for(let i=0;i<str.length;i++)h=(h*33^str.charCodeAt(i))>>>0;return h.toString(36)};
+const b64=str=>{const b=new TextEncoder().encode(str);let s="";for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
+let pubTimer=null,pubBusy=false;
+function schedulePublish(){if(!isStarosta())return;const c=getGH();if(!c.token||!c.auto)return;clearTimeout(pubTimer);pubTimer=setTimeout(()=>publishGroup(false),6000)}
+async function publishGroup(manual){
+ const c=getGH();if(!c.token){if(manual)toast("Najpierw połącz aplikację z GitHubem.");return false}
+ if(pubBusy){pubTimer=setTimeout(()=>publishGroup(manual),4000);return false}
+ const dane=groupDane(),h=strHash(JSON.stringify(dane));if(!manual&&h===lsGet(GPUB))return true;
+ if(!navigator.onLine){if(manual)toast("Brak internetu. Opublikuję, gdy będziesz online.");return false}
+ pubBusy=true;const api=`https://api.github.com/repos/${c.owner}/${c.repo}/contents/grupa.json`;
+ const headers={"Authorization":"Bearer "+c.token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"};
+ try{let sha;const g=await fetch(api,{headers,cache:"no-store"});if(g.ok)sha=(await g.json()).sha;else if(g.status!==404)throw new Error(g.status);
+  const body={message:"Aktualizacja dla grupy "+new Date().toLocaleString("pl-PL"),content:b64(JSON.stringify({aplikacja:"Memento Egzamini",typ:"grupa",wersja:1,zapisano:new Date().toISOString(),dane},null,1))};if(sha)body.sha=sha;
+  const r=await fetch(api,{method:"PUT",headers:{...headers,"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(!r.ok)throw new Error(r.status);
+  lsSet(GPUB,h);lsSet(GPUBT,new Date().toISOString());toast(manual?"Opublikowano. Koledzy zobaczą zmiany w ciągu kilku minut.":"Zmiany wysłane do grupy");if($("#bdlg").open)$("#groupInfo").textContent=groupInfoText();return true
+ }catch(err){const m=String(err.message);toast(m==="401"||m==="403"?"GitHub odrzucił token. Sprawdź go w Ustawieniach.":m==="404"?"Nie znaleziono repozytorium albo token nie ma do niego dostępu.":"Nie udało się opublikować. Spróbuję przy następnej zmianie.");return false}
+ finally{pubBusy=false}}
+$("#pubBtn").onclick=()=>publishGroup(true);
+$("#ghBtn").onclick=()=>{const c=getGH();$("#ghToken").value=c.token||"";$("#ghAuto").checked=c.auto!==false;$("#ghBox").hidden=!$("#ghBox").hidden;if(!$("#ghBox").hidden)$("#ghToken").focus()};
+$("#ghSave").onclick=async()=>{const t=$("#ghToken").value.trim();if(!t){toast("Wklej token GitHuba.");return}
+ const c=getGH();c.token=t;c.auto=$("#ghAuto").checked;lsSet(GH,JSON.stringify(c));lsSet(GPUB,null);
+ if(await publishGroup(true)){$("#ghBox").hidden=true;$("#pubBtn").hidden=false}};
+$("#ghForget").onclick=()=>{const c=getGH();delete c.token;lsSet(GH,JSON.stringify(c));$("#ghToken").value="";$("#pubBtn").hidden=true;$("#groupInfo").textContent=groupInfoText();toast("Usunięto token z tego urządzenia")};
 $("#exportBtn").onclick=async()=>{
  const json=JSON.stringify({aplikacja:"Memento Egzamini",wersja:1,zapisano:new Date().toISOString(),dane:S.data},null,2);
  const name="panel-starosty-"+todayISO()+".json";
@@ -657,6 +708,8 @@ applyRole();
 render();
 // Automatyczne odświeżenie planu, jeśli minęło ponad 6 godzin
 (()=>{const L=getLinks(),old=S.data.zajecia.some(z=>z.zrodlo==="usos"&&(!z.data||!z.spec));for(const sp of Object.keys(L)){const t=lsGet(USYNC+"-"+sp);if(old||!t||Date.now()-new Date(t)>6*36e5)syncUSOS(true,sp)}})();
+fetchGroup();
+if(isStarosta())schedulePublish();
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>

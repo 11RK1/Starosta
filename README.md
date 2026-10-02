@@ -6,7 +6,7 @@ Plan zajęć z USOS, terminy egzaminów, przedmioty i kontakty do prowadzących 
 
 **Adres aplikacji:** https://11rk1.github.io/Starosta/
 
-Wszystkie dane zostają na Twoim urządzeniu. Nic nie jest wysyłane na serwer, a starosta nie widzi Twojego planu ani notatek.
+Twoje notatki, zadania i własne wpisy zostają tylko na Twoim urządzeniu, a starosta ich nie widzi. Informacje od starosty (plan, terminy, przedmioty, kontakty do prowadzących) są publikowane w pliku `grupa.json` w tym repozytorium i pobierają się do aplikacji automatycznie.
 
 ---
 
@@ -30,7 +30,7 @@ Przy pierwszym uruchomieniu na ekranie Przegląd wybierz **Cyberbezpieczeństwo*
 
 ## 3. Plan zajęć
 
-Plan Twojej specjalizacji dostajesz w pliku od starosty (punkt 4). Nic więcej nie musisz robić.
+Plan Twojej specjalizacji pobiera się automatycznie od starosty (punkt 4). Nic więcej nie musisz robić.
 
 Przy zajęciach zobaczysz, jak się odbywają:
 - **Teams** – zajęcia online na MS Teams (w USOS mają adres w Józefowie),
@@ -48,12 +48,11 @@ Z własnym linkiem widzisz swój plan zamiast planu od starosty, a odświeża si
 
 ## 4. Informacje od starosty
 
-Starosta co jakiś czas wysyła na grupę plik `dla-grupy-RRRR-MM-DD.json` z planem zajęć, terminami egzaminów, warunkami zaliczeń i kontaktami do prowadzących.
+Plan zajęć, terminy egzaminów, warunki zaliczeń i kontakty do prowadzących **pobierają się same** przy każdym uruchomieniu aplikacji z internetem. Zmiany od starosty pojawiają się zwykle w ciągu kilku minut.
 
-1. Zapisz plik na urządzeniu: na iPhonie i iPadzie przez **Zachowaj w Plikach**, na Androidzie trafi do **Pobranych**.
-2. W aplikacji stuknij **Wczytaj plik od starosty** na ekranie Przegląd albo w **Ustawienia → Wczytaj plik od starosty**.
+Wpisy od starosty mają dopisek „od starosty”. Twój plan z własnego linku, zadania i własne wpisy pozostają bez zmian.
 
-Wpisy od starosty mają dopisek „od starosty”. Gdy wczytasz nowszy plik, zostaną zaktualizowane, a Twój plan, zadania i własne wpisy pozostaną bez zmian.
+Jeśli starosta wyśle plik `dla-grupy-RRRR-MM-DD.json`, możesz go też wczytać ręcznie: **Ustawienia → Wczytaj plik od starosty**.
 
 ## 5. Przypomnienia w kalendarzu
 
@@ -77,5 +76,12 @@ Usunięcie aplikacji z ekranu albo wyczyszczenie danych przeglądarki kasuje dan
 - W **Ustawieniach** wybierz tryb **Starosta** i swoją specjalizację.
 - **Plan → Połącz z USOS** (albo **Linki USOS**) ma dwa pola: plan Cyberbezpieczeństwa i plan Detektywów. Link Detektywów weź od kogoś z tej specjalizacji. Odśwież plan przed wysłaniem pliku grupie.
 - Przy terminach, przedmiotach i kontaktach ustaw pole **Dla kogo**: Cała grupa, Cyberbezpieczeństwo albo Detektywi. W zakładkach przełącznik **Wszyscy / Cyber / Detektywi** pokazuje, co widzi dana specjalizacja.
-- **Ustawienia → Udostępnij grupie** tworzy plik z terminami, przedmiotami i kontaktami. Plik wyślij na grupę, a po każdej zmianie wyślij nowy. Do pliku trafia plan z USOS obu specjalizacji. Nie trafiają do niego kontakty z rolą „Student”, zajęcia dodane ręcznie, zadania ani linki do USOS.
+- **Automatyczna publikacja (jednorazowa konfiguracja):**
+  1. Na github.com: zdjęcie profilowe → **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
+  2. Nazwa dowolna, **Expiration** np. 1 rok, **Repository access: Only select repositories → Starosta**.
+  3. **Permissions → Repository permissions → Contents: Read and write**. Potem **Generate token** i skopiuj token.
+  4. W aplikacji: **Ustawienia → Połączenie z GitHubem**, wklej token i stuknij **Zapisz i opublikuj**.
+
+  Od tej pory każda zmiana terminów, przedmiotów, kontaktów albo planu z USOS sama trafia do grupy po kilku sekundach. Token zostaje tylko na Twoim urządzeniu, nikomu go nie wysyłaj.
+- **Ustawienia → Wyślij jako plik** to zapasowy sposób bez GitHuba. Do publikacji i pliku trafia plan z USOS obu specjalizacji. Nie trafiają do niego kontakty z rolą „Student”, zajęcia dodane ręcznie, zadania ani linki do USOS.
 - Aktualizacja aplikacji: podmień pliki w repozytorium, a w `sw.js` zwiększ numer w `panel-starosty-vX`. Urządzenia pobiorą nową wersję przy kolejnym uruchomieniu.
