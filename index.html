@@ -116,6 +116,7 @@ label.fl{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(-
 .toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:10px;font-size:.88rem;z-index:20}
 @media (prefers-reduced-motion:no-preference){.item{transition:border-color .15s}.item:hover{border-color:var(--muted)}}
 .hbtns{display:flex;gap:8px}
+details.past{margin-top:24px}details.past summary{cursor:pointer;color:var(--muted);font-weight:600;padding:8px 0}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
 .helpbox{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 14px;line-height:1.5}
 .backup p{margin:0;color:var(--muted);font-size:.9rem}
@@ -169,7 +170,8 @@ const COLS={
  zajecia:{label:"Zajęcia",fields:[
   {k:"przedmiot",l:"Przedmiot",req:1},
   {k:"typ",l:"Forma",type:"select",opts:["Wykład","Ćwiczenia","Konwersatorium","Seminarium","Laboratorium","Inne"]},
-  {k:"dzien",l:"Dzień",type:"select",opts:[1,2,3,4,5,6,7],optl:DNI},
+  {k:"data",l:"Data (zostaw puste, jeśli zajęcia są co tydzień)",type:"date"},
+  {k:"dzien",l:"Dzień tygodnia (dla zajęć co tydzień)",type:"select",opts:[1,2,3,4,5,6,7],optl:DNI},
   {k:"sala",l:"Sala / online"},
   {k:"od",l:"Od",type:"time",pair:1},{k:"do",l:"Do",type:"time"},
   {k:"prowadzacy",l:"Prowadzący"},
@@ -245,6 +247,10 @@ function itemTask(t){return`<div class="item${t.zrobione?" done":""}" data-c="za
  ${t.termin?`<span class="due${!t.zrobione&&daysTo(t.termin)<=3?" soon":""}">${dueLabel(t.termin)}</span>`:""}</div>`}
 
 const sortT=a=>[...a].sort((x,y)=>(x.data||"").localeCompare(y.data||"")||(x.godz||"").localeCompare(y.godz||""));
+const localISO=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const onDay=(z,iso)=>z.data?z.data===iso:(+z.dzien===((new Date(iso+"T00:00").getDay())||7));
+const byTime=a=>[...a].sort((x,y)=>(x.od||"").localeCompare(y.od||""));
+function longDate(iso){const s=new Date(iso+"T00:00").toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"});return s.charAt(0).toUpperCase()+s.slice(1)}
 const sortZ=a=>[...a].sort((x,y)=>(+x.dzien||9)-(+y.dzien||9)||(x.od||"").localeCompare(y.od||""));
 const sortTask=a=>[...a].sort((x,y)=>(!!x.zrobione-!!y.zrobione)||(x.termin||"9").localeCompare(y.termin||"9"));
 const empty=(txt,c)=>`<div class="empty">${txt}${S.canEdit&&c?`<div style="margin-top:10px"><button class="btn" type="button" data-new="${c}">+ Dodaj ${COLS[c].label.toLowerCase()}</button></div>`:""}</div>`;
@@ -254,7 +260,9 @@ function render(){
  const D=S.data,v=$("#view");
  if(!S.loaded){v.innerHTML=`<p class="sub">Wczytywanie danych…</p>`;return}
  if(S.tab==="home"){
-  const today=sortZ(D.zajecia.filter(z=>+z.dzien===dow()));
+  const tISO=todayISO(),today=byTime(D.zajecia.filter(z=>onDay(z,tISO)));
+  let nextDay=null;if(!today.length){const ds=[...new Set(D.zajecia.filter(z=>z.data&&z.data>tISO).map(z=>z.data))].sort();nextDay=ds[0]||null}
+  const nextCls=nextDay?byTime(D.zajecia.filter(z=>onDay(z,nextDay))):[];
   const next=sortT(D.terminy.filter(t=>daysTo(t.data)>=0)).slice(0,5);
   const open=D.zadania.filter(t=>!t.zrobione);
   const week=D.terminy.filter(t=>{const n=daysTo(t.data);return n>=0&&n<=7}).length;
@@ -263,7 +271,8 @@ function render(){
   <div class="stats"><div class="stat"><b>${today.length}</b><span>zajęć dziś</span></div>
   <div class="stat"><b>${week}</b><span>terminów w 7 dni</span></div>
   <div class="stat"><b>${open.length}</b><span>zadań otwartych</span></div></div>
-  <div class="cols"><div><h2>Dziś na uczelni</h2><div class="list">${today.length?today.map(itemZaj).join(""):empty(D.zajecia.length?"Dziś nie masz zajęć.":"Dodaj plan zajęć, a tu pojawi się rozkład dnia.",D.zajecia.length?null:"zajecia")}</div></div>
+  <div class="cols"><div><h2>Dziś na uczelni</h2><div class="list">${today.length?today.map(itemZaj).join(""):empty(D.zajecia.length?"Dziś nie masz zajęć.":"Dodaj plan zajęć, a tu pojawi się rozkład dnia.",D.zajecia.length?null:"zajecia")}</div>
+  ${nextCls.length?`<h2>Najbliższe zajęcia · ${esc(longDate(nextDay))} (${dueLabel(nextDay)})</h2><div class="list">${nextCls.map(itemZaj).join("")}</div>`:""}</div>
   <div><h2>Najbliższe terminy</h2><div class="list">${next.length?next.map(itemTerm).join(""):empty("Brak nadchodzących terminów. Dodaj kolokwia, egzaminy i daty z dziekanatu.","terminy")}</div>
   <h2>Do zrobienia</h2><div class="list">${open.length?sortTask(open).slice(0,5).map(itemTask).join(""):empty("Wszystko zrobione.","zadania")}</div></div></div>`;
  } else if(S.tab==="zajecia"){
@@ -272,10 +281,16 @@ function render(){
   ${usosLink()?`<p class="note" style="margin:-6px 0 14px">${esc(usosStatus())}</p>`:""}
   <div class="note helpbox" id="usosHelpBox" hidden></div>`;
   if(!z.length)h+=empty("Nie ma jeszcze żadnych zajęć.","zajecia");
-  h+=`<div class="days">`;
-  for(let d=1;d<=7;d++){const day=z.filter(x=>+x.dzien===d);if(day.length)h+=`<div><div class="daylabel${d===dow()?" today":""}">${DNI[d]}</div><div class="list">${day.map(itemZaj).join("")}</div></div>`}
-  const nod=z.filter(x=>!(+x.dzien>=1));if(nod.length)h+=`<div><div class="daylabel">Bez dnia</div><div class="list">${nod.map(itemZaj).join("")}</div></div>`;
-  h+=`</div>`;
+  const tISO=todayISO(),dated=z.filter(x=>x.data),weekly=z.filter(x=>!x.data);
+  const dates=[...new Set(dated.map(x=>x.data))].sort(),up=dates.filter(d=>d>=tISO),past=dates.filter(d=>d<tISO);
+  const dayBlock=d=>`<div><div class="daylabel${d===tISO?" today":""}">${esc(longDate(d))}${d!==tISO?` <span class="due">${dueLabel(d)}</span>`:""}</div><div class="list">${byTime(dated.filter(x=>x.data===d)).map(itemZaj).join("")}</div></div>`;
+  if(up.length)h+=`<div class="days">${up.map(dayBlock).join("")}</div>`;
+  else if(dated.length)h+=empty("Brak nadchodzących zajęć z datą.",null);
+  if(weekly.length){h+=`<h2>Zajęcia co tydzień</h2><div class="days">`;
+   for(let d=1;d<=7;d++){const day=weekly.filter(x=>+x.dzien===d);if(day.length)h+=`<div><div class="daylabel${d===dow()?" today":""}">${DNI[d]}</div><div class="list">${byTime(day).map(itemZaj).join("")}</div></div>`}
+   const nod=weekly.filter(x=>!(+x.dzien>=1));if(nod.length)h+=`<div><div class="daylabel">Bez dnia</div><div class="list">${nod.map(itemZaj).join("")}</div></div>`;
+   h+=`</div>`}
+  if(past.length)h+=`<details class="past"><summary>Minione zajęcia (${past.length} ${past.length===1?"dzień":"dni"})</summary><div class="days">${past.reverse().map(dayBlock).join("")}</div></details>`;
   v.innerHTML=h;
  } else if(S.tab==="terminy"){
   const all=sortT(D.terminy),up=all.filter(t=>daysTo(t.data)>=0),past=all.filter(t=>daysTo(t.data)<0).reverse();
@@ -337,6 +352,7 @@ function openForm(c,id){
 $("#form").addEventListener("submit",async e=>{
  e.preventDefault();const form=e.target,c=form.dataset.c,id=form.dataset.id;
  const body={};for(const f of COLS[c].fields){let v=form.elements[f.k].value.trim();if(f.type==="number"||f.k==="dzien")v=v===""?"":Number(v);body[f.k]=v}
+ if(c==="zajecia"&&body.data){const d=new Date(body.data+"T00:00").getDay();body.dzien=d===0?7:d}
  $("#dlg").close();
  if(id){const old=S.data[c].find(x=>x.id===id)||{};upsert(c,{...old,...body,id})}
  else{body.id=uid();body.utworzono=new Date().toISOString();if(c==="zadania")body.zrobione=false;upsert(c,body)}
@@ -404,22 +420,21 @@ function parseICS(text){
 function icsToLocal(o){const v=o.val,y=+v.slice(0,4),mo=+v.slice(4,6)-1,d=+v.slice(6,8),h=+v.slice(9,11)||0,mi=+v.slice(11,13)||0;
  return o.utc?new Date(Date.UTC(y,mo,d,h,mi)):new Date(y,mo,d,h,mi)}
 const hm=d=>String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
-function guessTyp(s){s=(s||"").toLowerCase();
- if(/wykład|wyklad|\bwyk\b/.test(s))return"Wykład";if(/ćwicz|cwicz|\bćw\b|\bcw\b/.test(s))return"Ćwiczenia";
- if(/konwersator/.test(s))return"Konwersatorium";if(/seminar/.test(s))return"Seminarium";if(/laborat|\blab\b/.test(s))return"Laboratorium";return""}
-function cleanName(s){return(s||"").replace(/\s*[-–,(]\s*(wykład|wyklad|ćwiczenia|cwiczenia|konwersatorium|seminarium|laboratorium|lektorat)\b.*$/i,"").trim()||s}
+const TYPY={WYK:"Wykład",CWI:"Ćwiczenia",CW:"Ćwiczenia",KON:"Konwersatorium",KONW:"Konwersatorium",SEM:"Seminarium",LAB:"Laboratorium",LEK:"Lektorat",PRO:"Projekt",WAR:"Warsztaty",PRA:"Praktyka",ZAJ:"Zajęcia"};
+function splitSummary(sum){sum=(sum||"").trim();
+ let m=sum.match(/^([A-ZĄĆĘŁŃÓŚŹŻ]{2,5})\s*[-–:]\s*(.+)$/);
+ if(m&&TYPY[m[1]])return{typ:TYPY[m[1]],nazwa:m[2].trim()};
+ m=sum.match(/^(.+?)\s*[-–,(]\s*(wykład|wyklad|ćwiczenia|cwiczenia|konwersatorium|seminarium|laboratorium|lektorat|projekt|warsztaty)\b.*$/i);
+ if(m)return{typ:m[2].charAt(0).toUpperCase()+m[2].slice(1).toLowerCase().replace("wyklad","wykład").replace("cwiczenia","ćwiczenia"),nazwa:m[1].trim()};
+ return{typ:"",nazwa:sum}}
 function importUSOS(text){
  const evs=parseICS(text).filter(e=>e.DTSTART&&!e.DTSTART.date&&e.SUMMARY);
  if(!evs.length)return 0;
- const map=new Map();
+ const seen=new Set(),nowe=[];
  for(const e of evs){const st=icsToLocal(e.DTSTART),en=e.DTEND?icsToLocal(e.DTEND):new Date(st.getTime()+90*6e4);
-  const dzien=st.getDay()===0?7:st.getDay(),od=hm(st),dou=hm(en),sala=e.LOCATION||"";
-  const key=[e.SUMMARY,dzien,od,dou,sala].join("|");const iso=st.toISOString().slice(0,10);
-  const r=map.get(key);if(r){r.n++;if(iso<r.min)r.min=iso;if(iso>r.max)r.max=iso}
-  else map.set(key,{e,dzien,od,do:dou,sala,n:1,min:iso,max:iso})}
- const fmt=iso=>new Date(iso).toLocaleDateString("pl-PL",{day:"numeric",month:"numeric"});
- const nowe=[...map.values()].map(r=>({id:uid(),zrodlo:"usos",przedmiot:cleanName(r.e.SUMMARY),typ:guessTyp(r.e.SUMMARY),dzien:r.dzien,od:r.od,do:r.do,sala:r.sala,prowadzacy:"",
-  uwagi:(r.n>1?r.n+(r.n%10>=2&&r.n%10<=4&&(r.n%100<12||r.n%100>14)?" spotkania, ":" spotkań, ")+fmt(r.min)+"–"+fmt(r.max):"tylko "+fmt(r.min))+" · z USOS",utworzono:new Date().toISOString()}));
+  const data=localISO(st),od=hm(st),dou=hm(en),key=[e.SUMMARY,data,od].join("|");if(seen.has(key))continue;seen.add(key);
+  const {typ,nazwa}=splitSummary(e.SUMMARY);const desc=(e.DESCRIPTION||"").split("\n")[0].trim();
+  nowe.push({id:"usos-"+data+"-"+od.replace(":","")+"-"+nowe.length,zrodlo:"usos",przedmiot:nazwa,typ,data,dzien:st.getDay()||7,od,do:dou,sala:e.LOCATION||"",prowadzacy:"",uwagi:desc.length<=140?desc:"",utworzono:new Date().toISOString()})}
  S.data.zajecia=S.data.zajecia.filter(z=>z.zrodlo!=="usos").concat(nowe);persist();render();return nowe.length}
 
 // Synchronizacja z linku USOS
@@ -482,7 +497,7 @@ $("#importFile").onchange=async e=>{
 loadLocal();
 render();
 // Automatyczne odświeżenie planu, jeśli minęło ponad 6 godzin
-(()=>{const t=lsGet(USYNC);if(usosLink()&&(!t||Date.now()-new Date(t)>6*36e5))syncUSOS(true)})();
+(()=>{const t=lsGet(USYNC),old=S.data.zajecia.some(z=>z.zrodlo==="usos"&&!z.data);if(usosLink()&&(old||!t||Date.now()-new Date(t)>6*36e5))syncUSOS(true)})();
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
