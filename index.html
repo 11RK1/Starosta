@@ -135,6 +135,13 @@ label.fl{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(-
 <main class="wrap" id="view"></main>
 
 <dialog id="dlg"><form class="f" id="form" method="dialog"></form></dialog>
+<dialog id="udlg"><form class="f" method="dialog" id="uform">
+ <h3>Połącz z USOS</h3>
+ <p class="note" style="margin:0">W USOSweb wejdź w <b>Mój USOSweb → Plan zajęć → Eksport</b>, skopiuj odnośnik do planu i wklej go tutaj. Link zostaje tylko na tym urządzeniu.</p>
+ <label class="fl" for="usosUrl">Odnośnik do planu<input id="usosUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://usosapi…/services/tt/upcoming_ical?…"></label>
+ <p class="note" id="usosErr" style="margin:0;color:var(--accent)" hidden></p>
+ <div class="actions"><button class="btn danger" type="button" id="usosForget" hidden>Odłącz</button><span class="spacer"></span><button class="btn" type="button" id="usosCancel">Anuluj</button><button class="btn primary" type="submit">Zapisz i pobierz</button></div>
+</form></dialog>
 <dialog id="bdlg"><form class="f backup" method="dialog" id="bform">
  <h3>Kopia danych</h3>
  <p>Dane są zapisane tylko na tym urządzeniu. Zrób kopię do pliku i zapisz ją w aplikacji Pliki (na iPadzie, iCloud Drive albo dysku USB). Z pliku przeniesiesz też dane na inne urządzenie.</p>
@@ -195,7 +202,7 @@ const TABS=[
  {id:"przedmioty",l:"Przedmioty",i:"subj"},{id:"kontakty",l:"Kontakty",i:"cont"},{id:"zadania",l:"Zadania",i:"task"}];
 
 const S={tab:"home",data:{zajecia:[],terminy:[],przedmioty:[],kontakty:[],zadania:[]},loaded:true,canEdit:true};
-const KEY="panel-starosty-dane",META="panel-starosty-kopia";
+const KEY="panel-starosty-dane",META="panel-starosty-kopia",ULINK="panel-starosty-usos-link",USYNC="panel-starosty-usos-sync";
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 function persist(){try{localStorage.setItem(KEY,JSON.stringify({wersja:1,dane:S.data}));return true}catch(e){toast("Nie udało się zapisać na urządzeniu. Zrób kopię do pliku.");return false}}
 function loadLocal(){let raw=null;try{raw=localStorage.getItem(KEY)}catch(e){}
@@ -261,8 +268,9 @@ function render(){
   <h2>Do zrobienia</h2><div class="list">${open.length?sortTask(open).slice(0,5).map(itemTask).join(""):empty("Wszystko zrobione.","zadania")}</div></div></div>`;
  } else if(S.tab==="zajecia"){
   const z=sortZ(D.zajecia);let h=`<h1>Plan zajęć</h1><p class="sub">Semestr zimowy. Dotknij zajęć, żeby je edytować.</p>
-  <div class="toolbar"><label class="btn filebtn" for="usosFile">Importuj plan z USOS<input type="file" id="usosFile" accept=".ics,text/calendar"></label><button class="btn" type="button" id="usosHelp">Jak pobrać plik?</button></div>
-  <div class="note helpbox" id="usosHelpBox" hidden>W USOSweb wejdź w <b>Mój USOSweb → Plan zajęć</b> i wybierz eksport do formatu <b>iCalendar (.ics)</b>, a następnie pobierz plik na iPada. Tutaj stuknij „Importuj plan z USOS” i wskaż ten plik. Zajęcia z USOS zastąpią poprzedni import, a ręcznie dodane zajęcia zostaną. Po zmianach w planie zaimportuj świeży plik.</div>`;
+  <div class="toolbar">${usosLink()?`<button class="btn primary" type="button" id="usosSync">Odśwież z USOS</button><button class="btn" type="button" id="usosLinkBtn">Zmień link</button>`:`<button class="btn primary" type="button" id="usosLinkBtn">Połącz z USOS</button>`}<label class="btn filebtn" for="usosFile">Import z pliku .ics<input type="file" id="usosFile" accept=".ics,text/calendar"></label></div>
+  ${usosLink()?`<p class="note" style="margin:-6px 0 14px">${esc(usosStatus())}</p>`:""}
+  <div class="note helpbox" id="usosHelpBox" hidden></div>`;
   if(!z.length)h+=empty("Nie ma jeszcze żadnych zajęć.","zajecia");
   h+=`<div class="days">`;
   for(let d=1;d<=7;d++){const day=z.filter(x=>+x.dzien===d);if(day.length)h+=`<div><div class="daylabel${d===dow()?" today":""}">${DNI[d]}</div><div class="list">${day.map(itemZaj).join("")}</div></div>`}
@@ -414,12 +422,41 @@ function importUSOS(text){
   uwagi:(r.n>1?r.n+(r.n%10>=2&&r.n%10<=4&&(r.n%100<12||r.n%100>14)?" spotkania, ":" spotkań, ")+fmt(r.min)+"–"+fmt(r.max):"tylko "+fmt(r.min))+" · z USOS",utworzono:new Date().toISOString()}));
  S.data.zajecia=S.data.zajecia.filter(z=>z.zrodlo!=="usos").concat(nowe);persist();render();return nowe.length}
 
+// Synchronizacja z linku USOS
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}
+const usosLink=()=>lsGet(ULINK)||"";
+function usosStatus(){const t=lsGet(USYNC);return t?"Ostatnio pobrano z USOS: "+new Date(t).toLocaleString("pl-PL",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"}):"Plan z USOS nie był jeszcze pobrany."}
+function showUsosFallback(){
+ const url=usosLink();S.tab="zajecia";render();const b=$("#usosHelpBox");if(!b)return;
+ b.innerHTML=`USOS nie pozwolił aplikacji pobrać planu bezpośrednio. Zrób to ręcznie: przytrzymaj palcem przycisk poniżej, wybierz <b>Pobierz plik połączony</b>, a potem tutaj stuknij <b>Import z pliku .ics</b> i wskaż plik z folderu Pobrane.<div style="margin-top:10px"><a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Plik planu z USOS</a></div>`;
+ b.hidden=false}
+async function syncUSOS(silent){
+ const url=usosLink();if(!url)return false;
+ if(!navigator.onLine){if(!silent)toast("Brak internetu. Spróbuj później.");return false}
+ if(!silent)toast("Pobieram plan z USOS…");
+ try{const r=await fetch(url,{cache:"no-store",credentials:"omit"});
+  if(!r.ok)throw new Error("http "+r.status);
+  const text=await r.text();if(!/BEGIN:VCALENDAR/.test(text))throw new Error("format");
+  const n=importUSOS(text);lsSet(USYNC,new Date().toISOString());render();
+  if(!silent)toast(n?"Zaktualizowano plan z USOS ("+n+")":"USOS nie zwrócił żadnych nadchodzących zajęć.");return true
+ }catch(err){if(!silent){if(String(err.message).startsWith("http 4"))toast("USOS odrzucił link. Skopiuj go ponownie z USOSweb.");else showUsosFallback()}return false}}
+function openUsosDialog(){
+ const d=$("#udlg");$("#usosUrl").value=usosLink();$("#usosErr").hidden=true;$("#usosForget").hidden=!usosLink();d.showModal()}
+$("#usosCancel").onclick=()=>$("#udlg").close();
+$("#usosForget").onclick=()=>{lsSet(ULINK,null);lsSet(USYNC,null);$("#udlg").close();render();toast("Odłączono USOS. Zaimportowane zajęcia zostały.")};
+$("#uform").addEventListener("submit",e=>{e.preventDefault();
+ const v=$("#usosUrl").value.trim();
+ if(!/^https:\/\/\S+$/i.test(v)||!/ical|\.ics/i.test(v)){$("#usosErr").textContent="To nie wygląda na odnośnik do planu z USOS. Skopiuj cały link z okna „Eksport planu zajęć”.";$("#usosErr").hidden=false;return}
+ lsSet(ULINK,v);$("#udlg").close();render();syncUSOS(false)});
+
 document.addEventListener("change",async e=>{
  if(e.target.id!=="usosFile")return;const f=e.target.files[0];e.target.value="";if(!f)return;
- try{const n=importUSOS(await f.text());toast(n?"Zaimportowano "+n+" zajęć z USOS":"W pliku nie ma zajęć z godzinami.")}catch(_){toast("Nie udało się odczytać pliku z USOS.")}});
+ try{const n=importUSOS(await f.text());toast(n?"Zaimportowano plan z USOS ("+n+")":"W pliku nie ma zajęć z godzinami.")}catch(_){toast("Nie udało się odczytać pliku z USOS.")}});
 document.addEventListener("click",e=>{
  if(e.target.id==="calAll"){addToCalendar(sortT(S.data.terminy.filter(t=>daysTo(t.data)>=0)))}
- if(e.target.id==="usosHelp"){const b=$("#usosHelpBox");if(b)b.hidden=!b.hidden}});
+ if(e.target.id==="usosLinkBtn")openUsosDialog();
+ if(e.target.id==="usosSync")syncUSOS(false)});
 
 // Kopia danych
 function lastBackupText(){let d=null;try{d=localStorage.getItem(META)}catch(e){}
@@ -444,6 +481,8 @@ $("#importFile").onchange=async e=>{
 
 loadLocal();
 render();
+// Automatyczne odświeżenie planu, jeśli minęło ponad 6 godzin
+(()=>{const t=lsGet(USYNC);if(usosLink()&&(!t||Date.now()-new Date(t)>6*36e5))syncUSOS(true)})();
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>

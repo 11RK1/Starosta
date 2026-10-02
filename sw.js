@@ -1,5 +1,5 @@
 // Panel Starosty – praca offline. Podnieś numer wersji po każdej zmianie plików.
-const CACHE = "panel-starosty-v2";
+const CACHE = "panel-starosty-v3";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
@@ -10,7 +10,7 @@ self.addEventListener("activate", e => {
 });
 // Najpierw sieć (żeby dostać nową wersję), a bez internetu – kopia z pamięci.
 self.addEventListener("fetch", e => {
-  if (e.request.method !== "GET") return;
+  if (e.request.method !== "GET" || new URL(e.request.url).origin !== self.location.origin) return;
   e.respondWith(
     fetch(e.request).then(r => {
       const copy = r.clone();
