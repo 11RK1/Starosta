@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Starosta">
+<meta name="apple-mobile-web-app-title" content="Memento">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#b2253a">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>Panel Starosty</title>
+<title>Memento Egzamini</title>
 <style>
 /* Layout: single column app, sticky header, bottom tab bar on phone / top tabs on desktop; cards only for items */
 :root{
@@ -116,6 +116,18 @@ label.fl{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(-
 .toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:10px;font-size:.88rem;z-index:20}
 @media (prefers-reduced-motion:no-preference){.item{transition:border-color .15s}.item:hover{border-color:var(--muted)}}
 .hbtns{display:flex;gap:8px}
+fieldset.alerts{border:1px solid var(--line);border-radius:12px;padding:10px 14px 12px;margin:0}fieldset.alerts legend{font-size:.82rem;color:var(--muted);font-weight:500;padding:0 4px}
+#alertOpts{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 12px}
+.chk{display:flex;align-items:center;gap:10px;min-height:44px;font-size:.95rem;cursor:pointer}.chk input{width:22px;height:22px;accent-color:var(--accent);margin:0}
+h4.sect{font:600 .78rem var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:10px 0 0}
+.rolepick{display:flex;flex-direction:column}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:0 0 14px;background:var(--surface)}
+.segb{font:600 .9rem var(--body);background:none;border:0;color:var(--muted);padding:9px 14px;min-height:40px;cursor:pointer}
+.segb+.segb{border-left:1px solid var(--line)}
+.segb[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+.tag{color:var(--accent);font-weight:600}
+.install{background:var(--accent-soft);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 16px;line-height:1.5}
+.install .btn{margin-top:8px}
 details.past{margin-top:24px}details.past summary{cursor:pointer;color:var(--muted);font-weight:600;padding:8px 0}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
 .helpbox{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 14px;line-height:1.5}
@@ -127,15 +139,22 @@ details.past{margin-top:24px}details.past summary{cursor:pointer;color:var(--mut
 <body>
 
 <header><div class="wrap">
-  <div class="brand top"><b>Panel <i>Starosty</i></b><small>III rok · 2026/2027</small></div>
-  <div class="hbtns"><button class="btn" id="backupBtn" type="button">Kopia</button><button class="btn primary" id="addBtn" type="button">+ Dodaj</button></div>
+  <div class="brand top"><b class="brandname">Memento <i>Egzamini</i></b><small class="brandsub">III rok · 2026/2027</small></div>
+  <div class="hbtns"><button class="btn" id="backupBtn" type="button">Ustawienia</button><button class="btn primary" id="addBtn" type="button">+ Dodaj</button></div>
 </div></header>
 
-<nav class="tabs" aria-label="Sekcje"><div class="brand navbrand"><b>Panel <i>Starosty</i></b><small>III rok · 2026/2027</small></div><div class="wrap" role="tablist" id="tabs"></div></nav>
+<nav class="tabs" aria-label="Sekcje"><div class="brand navbrand"><b class="brandname">Memento <i>Egzamini</i></b><small class="brandsub">III rok · 2026/2027</small></div><div class="wrap" role="tablist" id="tabs"></div></nav>
 
 <main class="wrap" id="view"></main>
 
 <dialog id="dlg"><form class="f" id="form" method="dialog"></form></dialog>
+<dialog id="cdlg"><form class="f" method="dialog" id="cform">
+ <h3>Dodaj do kalendarza</h3>
+ <p class="note" id="calInfo" style="margin:0"></p>
+ <fieldset class="alerts"><legend>Przypomnienia (najwyżej 2)</legend><div id="alertOpts"></div></fieldset>
+ <p class="note" id="calAllDay" style="margin:0" hidden>Terminy bez godziny trafią do kalendarza jako całodniowe, a przypomnienia liczą się wtedy od północy.</p>
+ <div class="actions"><button class="btn" type="button" id="calCancel">Anuluj</button><button class="btn primary" type="submit">Utwórz plik kalendarza</button></div>
+</form></dialog>
 <dialog id="udlg"><form class="f" method="dialog" id="uform">
  <h3>Połącz z USOS</h3>
  <p class="note" style="margin:0">W USOSweb wejdź w <b>Mój USOSweb → Plan zajęć → Eksport</b>, skopiuj odnośnik do planu i wklej go tutaj. Link zostaje tylko na tym urządzeniu.</p>
@@ -144,14 +163,29 @@ details.past{margin-top:24px}details.past summary{cursor:pointer;color:var(--mut
  <div class="actions"><button class="btn danger" type="button" id="usosForget" hidden>Odłącz</button><span class="spacer"></span><button class="btn" type="button" id="usosCancel">Anuluj</button><button class="btn primary" type="submit">Zapisz i pobierz</button></div>
 </form></dialog>
 <dialog id="bdlg"><form class="f backup" method="dialog" id="bform">
- <h3>Kopia danych</h3>
- <p>Dane są zapisane tylko na tym urządzeniu. Zrób kopię do pliku i zapisz ją w aplikacji Pliki (na iPadzie, iCloud Drive albo dysku USB). Z pliku przeniesiesz też dane na inne urządzenie.</p>
+ <h3>Ustawienia</h3>
+ <fieldset class="alerts"><legend>Tryb aplikacji</legend><div class="rolepick">
+  <label class="chk"><input type="radio" name="rola" value="starosta">Starosta – udostępniam informacje grupie</label>
+  <label class="chk"><input type="radio" name="rola" value="student">Student – wczytuję plik od starosty</label>
+ </div></fieldset>
+ <fieldset class="alerts"><legend>Moja specjalizacja</legend><div class="rolepick">
+  <label class="chk"><input type="radio" name="spec" value="cyber">Cyberbezpieczeństwo</label>
+  <label class="chk"><input type="radio" name="spec" value="detektywi">Detektywi</label>
+ </div></fieldset>
+ <h4 class="sect">Informacje dla grupy</h4>
+ <p id="groupInfo"></p>
+ <div class="actions" style="justify-content:flex-start">
+  <button class="btn primary" type="button" id="shareGroupBtn">Udostępnij grupie</button>
+  <label class="btn filebtn" for="groupFile">Wczytaj plik od starosty<input type="file" id="groupFile" data-import accept=".json,application/json"></label>
+ </div>
+ <h4 class="sect">Kopia danych</h4>
+ <p>Dane są zapisane tylko na tym urządzeniu. Zrób kopię do pliku i zapisz ją w aplikacji Pliki (iCloud Drive, Dysk Google albo pendrive). Z kopii przeniesiesz też dane na inne urządzenie.</p>
  <p id="lastBackup"></p>
  <div class="actions" style="justify-content:flex-start">
-  <button class="btn primary" type="button" id="exportBtn">Zapisz kopię do pliku</button>
-  <label class="btn filebtn" for="importFile">Wczytaj z pliku<input type="file" id="importFile" accept=".json,application/json"></label>
+  <button class="btn" type="button" id="exportBtn">Zapisz kopię do pliku</button>
+  <label class="btn filebtn" for="importFile">Wczytaj kopię<input type="file" id="importFile" data-import accept=".json,application/json"></label>
  </div>
- <p class="note" id="importNote">Wczytanie pliku zastępuje obecne dane danymi z kopii.</p>
+ <p class="note" id="importNote">Wczytanie kopii zastępuje wszystkie obecne dane.</p>
  <div class="actions"><button class="btn" type="submit">Zamknij</button></div>
 </form></dialog>
 <div class="toast" id="toast" hidden></div>
@@ -178,17 +212,20 @@ const COLS={
   {k:"uwagi",l:"Uwagi (np. co 2 tygodnie)",type:"textarea"}]},
  terminy:{label:"Termin",fields:[
   {k:"tytul",l:"Co",req:1},
+  {k:"spec",l:"Dla kogo",type:"select",opts:["cyber","detektywi"],optl:{cyber:"Cyberbezpieczeństwo",detektywi:"Detektywi"},blank:"Cała grupa",only:"starosta"},
   {k:"kategoria",l:"Rodzaj",type:"select",opts:["Egzamin","Kolokwium","Oddanie pracy","Uczelnia","Grupa","Inne"]},
   {k:"data",l:"Data",type:"date",req:1,pair:1},{k:"godz",l:"Godzina",type:"time"},
   {k:"opis",l:"Szczegóły (sala, zakres materiału)",type:"textarea"}]},
  przedmioty:{label:"Przedmiot",fields:[
   {k:"nazwa",l:"Nazwa",req:1},
+  {k:"spec",l:"Dla kogo",type:"select",opts:["cyber","detektywi"],optl:{cyber:"Cyberbezpieczeństwo",detektywi:"Detektywi"},blank:"Cała grupa",only:"starosta"},
   {k:"zaliczenie",l:"Forma zaliczenia",type:"select",opts:["Egzamin","Zaliczenie na ocenę","Zaliczenie","Projekt"],pair:1},
   {k:"ects",l:"ECTS",type:"number"},
   {k:"prowadzacy",l:"Prowadzący"},
   {k:"warunki",l:"Warunki zaliczenia, obecności, literatura",type:"textarea"}]},
  kontakty:{label:"Kontakt",fields:[
   {k:"imie",l:"Imię i nazwisko / jednostka",req:1},
+  {k:"spec",l:"Dla kogo",type:"select",opts:["cyber","detektywi"],optl:{cyber:"Cyberbezpieczeństwo",detektywi:"Detektywi"},blank:"Cała grupa",only:"starosta"},
   {k:"rola",l:"Rola",type:"select",opts:["Prowadzący","Dziekanat","Opiekun roku","Samorząd","Student","Inne"]},
   {k:"email",l:"E-mail",type:"email"},
   {k:"telefon",l:"Telefon",type:"tel"},
@@ -205,17 +242,19 @@ const TABS=[
 
 const S={tab:"home",data:{zajecia:[],terminy:[],przedmioty:[],kontakty:[],zadania:[]},loaded:true,canEdit:true};
 const KEY="panel-starosty-dane",META="panel-starosty-kopia",ULINK="panel-starosty-usos-link",USYNC="panel-starosty-usos-sync";
+const ROLA="panel-starosty-rola",GSYNC="panel-starosty-grupa";
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 function persist(){try{localStorage.setItem(KEY,JSON.stringify({wersja:1,dane:S.data}));return true}catch(e){toast("Nie udało się zapisać na urządzeniu. Zrób kopię do pliku.");return false}}
 function loadLocal(){let raw=null;try{raw=localStorage.getItem(KEY)}catch(e){}
- if(raw){try{const o=JSON.parse(raw);for(const c of Object.keys(S.data))S.data[c]=Array.isArray(o.dane?.[c])?o.dane[c]:[]}catch(e){}return}
- const t="2026-10-01T14:15:00Z";
- S.data.zadania=[
-  {id:uid(),tresc:"Wpisać plan zajęć na semestr zimowy",termin:"2026-10-05",uwagi:"",zrobione:false,utworzono:t},
-  {id:uid(),tresc:"Zebrać aktualną listę grupy z kontaktami",termin:"2026-10-07",uwagi:"",zrobione:false,utworzono:t},
-  {id:uid(),tresc:"Zapisać konsultacje i e-maile prowadzących",termin:"2026-10-14",uwagi:"Zwykle podają je na pierwszych zajęciach",zrobione:false,utworzono:t},
-  {id:uid(),tresc:"Ustalić z grupą kanał komunikacji na ten rok",termin:"",uwagi:"",zrobione:false,utworzono:t}];
- persist()}
+ if(raw){try{const o=JSON.parse(raw);for(const c of Object.keys(S.data))S.data[c]=Array.isArray(o.dane?.[c])?o.dane[c]:[]}catch(e){}
+  if(!lsGet(ROLA))lsSet(ROLA,"starosta");return}
+ if(!lsGet(ROLA))lsSet(ROLA,"student")}
+const isStarosta=()=>lsGet(ROLA)==="starosta";
+const SPECY={cyber:"Cyberbezpieczeństwo",detektywi:"Detektywi"};
+const mySpec=()=>{const v=lsGet("panel-starosty-spec");return SPECY[v]?v:""};
+// f: "all" albo kod specjalizacji
+const forSpec=(x,f)=>f==="all"||!f||!x.spec||x.spec===f;
+function applyRole(){document.querySelectorAll(".brandsub").forEach(b=>b.textContent=(isStarosta()?"Starosta · ":"")+"III rok · 2026/2027")}
 function upsert(c,rec){const a=S.data[c],i=a.findIndex(x=>x.id===rec.id);if(i>=0)a[i]=rec;else a.push(rec);persist();render()}
 function removeRec(c,id){S.data[c]=S.data[c].filter(x=>x.id!==id);persist();render()}
 try{const t=localStorage.getItem("ps-tab");if(t&&TABS.some(x=>x.id===t))S.tab=t}catch(e){}
@@ -239,7 +278,7 @@ function itemZaj(z){return`<button class="item" type="button" data-c="zajecia" d
  <div class="time">${esc(z.od||"––")}<span>${esc(z.do||"")}</span></div>
  <div class="main"><div class="t">${esc(z.przedmiot)}</div><div class="m">${[z.typ,z.sala,z.prowadzacy].filter(Boolean).map(esc).join(" · ")}</div>${z.uwagi?`<div class="m">${esc(z.uwagi)}</div>`:""}</div></button>`}
 function itemTerm(t){const n=daysTo(t.data);return`<button class="item" type="button" data-c="terminy" data-id="${t.id}">
- <div class="main"><div class="t">${esc(t.tytul)}</div><div class="m">${esc(fmtDate(t.data))}${t.godz?", "+esc(t.godz):""}${t.opis?" · "+esc(t.opis):""}</div></div>
+ <div class="main"><div class="t">${esc(t.tytul)}</div><div class="m">${esc(fmtDate(t.data))}${t.godz?", "+esc(t.godz):""}${t.opis?" · "+esc(t.opis):""}${src(t)}</div></div>
  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">${t.kategoria?`<span class="chip${t.kategoria==="Egzamin"||t.kategoria==="Kolokwium"?"":" n"}">${esc(t.kategoria)}</span>`:""}<span class="due${n!==null&&n>=0&&n<=7?" soon":""}${n<0?" past":""}">${dueLabel(t.data)}</span></div></button>`}
 function itemTask(t){return`<div class="item${t.zrobione?" done":""}" data-c="zadania" data-id="${t.id}" role="button" tabindex="0">
  <button class="check" type="button" data-toggle="${t.id}" aria-label="${t.zrobione?"Oznacz jako niezrobione":"Oznacz jako zrobione"}" style="background-clip:padding-box;cursor:pointer;padding:0"></button>
@@ -257,7 +296,9 @@ const empty=(txt,c)=>`<div class="empty">${txt}${S.canEdit&&c?`<div style="margi
 
 function render(){
  renderTabs();
- const D=S.data,v=$("#view");
+ const SHARED=["terminy","przedmioty","kontakty"];
+ const filt=S.tab==="home"||!isStarosta()?(mySpec()||"all"):(S.specFilter||"all");
+ const D={...S.data};for(const c of SHARED)D[c]=S.data[c].filter(x=>forSpec(x,filt));const v=$("#view");
  if(!S.loaded){v.innerHTML=`<p class="sub">Wczytywanie danych…</p>`;return}
  if(S.tab==="home"){
   const tISO=todayISO(),today=byTime(D.zajecia.filter(z=>onDay(z,tISO)));
@@ -267,7 +308,7 @@ function render(){
   const open=D.zadania.filter(t=>!t.zrobione);
   const week=D.terminy.filter(t=>{const n=daysTo(t.data);return n>=0&&n<=7}).length;
   v.innerHTML=`<h1>${new Date().toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long"})}</h1>
-  <p class="sub">Wszystko, co potrzebne starości, w jednym miejscu.</p>
+  ${installHint()}<p class="sub">${isStarosta()?"Wszystko, co potrzebne starości, w jednym miejscu.":"Plan, terminy i kontakty w jednym miejscu."}</p>${!isStarosta()&&!hasGroup()?`<div class="install">Masz plik od starosty z terminami i kontaktami? <div><label class="btn primary filebtn" for="groupFile2">Wczytaj plik od starosty<input type="file" id="groupFile2" data-import accept=".json,application/json"></label></div></div>`:""}
   <div class="stats"><div class="stat"><b>${today.length}</b><span>zajęć dziś</span></div>
   <div class="stat"><b>${week}</b><span>terminów w 7 dni</span></div>
   <div class="stat"><b>${open.length}</b><span>zadań otwartych</span></div></div>
@@ -277,7 +318,7 @@ function render(){
   <h2>Do zrobienia</h2><div class="list">${open.length?sortTask(open).slice(0,5).map(itemTask).join(""):empty("Wszystko zrobione.","zadania")}</div></div></div>`;
  } else if(S.tab==="zajecia"){
   const z=sortZ(D.zajecia);let h=`<h1>Plan zajęć</h1><p class="sub">Semestr zimowy. Dotknij zajęć, żeby je edytować.</p>
-  <div class="toolbar">${usosLink()?`<button class="btn primary" type="button" id="usosSync">Odśwież z USOS</button><button class="btn" type="button" id="usosLinkBtn">Zmień link</button>`:`<button class="btn primary" type="button" id="usosLinkBtn">Połącz z USOS</button>`}<label class="btn filebtn" for="usosFile">Import z pliku .ics<input type="file" id="usosFile" accept=".ics,text/calendar"></label></div>
+  <div class="toolbar">${usosLink()?`<button class="btn primary" type="button" id="usosSync">Odśwież z USOS</button><button class="btn" type="button" id="usosLinkBtn">Zmień link</button>`:`<button class="btn primary" type="button" id="usosLinkBtn">Połącz z USOS</button>`}${D.zajecia.some(x=>x.data&&x.data>=todayISO())?`<button class="btn" type="button" id="calZaj">Zjazdy do kalendarza</button>`:""}<label class="btn filebtn" for="usosFile">Import z pliku .ics<input type="file" id="usosFile" accept=".ics,text/calendar"></label></div>
   ${usosLink()?`<p class="note" style="margin:-6px 0 14px">${esc(usosStatus())}</p>`:""}
   <div class="note helpbox" id="usosHelpBox" hidden></div>`;
   if(!z.length)h+=empty("Nie ma jeszcze żadnych zajęć.","zajecia");
@@ -301,7 +342,7 @@ function render(){
   const p=[...D.przedmioty].sort((a,b)=>(a.nazwa||"").localeCompare(b.nazwa||"","pl"));
   const ects=p.reduce((s,x)=>s+(+x.ects||0),0);
   v.innerHTML=`<h1>Przedmioty</h1><p class="sub">${p.length?`${p.length} przedmiotów${ects?" · "+ects+" ECTS":""}`:"Warunki zaliczenia i formy egzaminów w jednym miejscu."}</p>
-  <div class="list twocol">${p.length?p.map(x=>`<button class="item" type="button" data-c="przedmioty" data-id="${x.id}"><div class="main"><div class="t">${esc(x.nazwa)}</div><div class="m">${[x.prowadzacy,x.ects?x.ects+" ECTS":""].filter(Boolean).map(esc).join(" · ")}</div>${x.warunki?`<div class="m" style="white-space:pre-line;margin-top:4px">${esc(x.warunki)}</div>`:""}</div>${x.zaliczenie?`<span class="chip${x.zaliczenie==="Egzamin"?"":" n"}">${esc(x.zaliczenie)}</span>`:""}</button>`).join(""):empty("Nie ma jeszcze przedmiotów.","przedmioty")}</div>`;
+  <div class="list twocol">${p.length?p.map(x=>`<button class="item" type="button" data-c="przedmioty" data-id="${x.id}"><div class="main"><div class="t">${esc(x.nazwa)}</div><div class="m">${[x.prowadzacy,x.ects?x.ects+" ECTS":""].filter(Boolean).map(esc).join(" · ")}${src(x)}</div>${x.warunki?`<div class="m" style="white-space:pre-line;margin-top:4px">${esc(x.warunki)}</div>`:""}</div>${x.zaliczenie?`<span class="chip${x.zaliczenie==="Egzamin"?"":" n"}">${esc(x.zaliczenie)}</span>`:""}</button>`).join(""):empty("Nie ma jeszcze przedmiotów.","przedmioty")}</div>`;
  } else if(S.tab==="kontakty"){
   const order=["Opiekun roku","Dziekanat","Prowadzący","Samorząd","Student","Inne",""];
   const k=[...D.kontakty].sort((a,b)=>order.indexOf(a.rola||"")-order.indexOf(b.rola||"")||(a.imie||"").localeCompare(b.imie||"","pl"));
@@ -312,14 +353,16 @@ function render(){
    h+=`<div class="item" data-c="kontakty" data-id="${c.id}" role="button" tabindex="0"><div class="main"><div class="t">${esc(c.imie)}</div>
    ${c.email?`<div><button class="copy" type="button" data-copy="${esc(c.email)}">${esc(c.email)}</button></div>`:""}
    ${c.telefon?`<div><button class="copy" type="button" data-copy="${esc(c.telefon)}">${esc(c.telefon)}</button></div>`:""}
-   ${c.konsultacje?`<div class="m">Konsultacje: ${esc(c.konsultacje)}</div>`:""}${c.uwagi?`<div class="m">${esc(c.uwagi)}</div>`:""}</div></div>`}
+   ${c.konsultacje?`<div class="m">Konsultacje: ${esc(c.konsultacje)}</div>`:""}${c.uwagi?`<div class="m">${esc(c.uwagi)}</div>`:""}${src(c)?`<div class="m">${esc(src(c).slice(3))}</div>`:""}</div></div>`}
   if(last!==null)h+="</div>";v.innerHTML=h;
  } else if(S.tab==="zadania"){
   const t=sortTask(D.zadania),open=t.filter(x=>!x.zrobione),done=t.filter(x=>x.zrobione);
-  v.innerHTML=`<h1>Zadania starosty</h1><p class="sub">${open.length} do zrobienia · ${done.length} zrobione</p>
+  v.innerHTML=`<h1>${isStarosta()?"Zadania starosty":"Moje zadania"}</h1><p class="sub">${open.length} do zrobienia · ${done.length} zrobione</p>
   <div class="list">${open.length?open.map(itemTask).join(""):empty("Nic nie czeka.","zadania")}</div>
   ${done.length?`<h2>Zrobione</h2><div class="list">${done.map(itemTask).join("")}</div>`:""}`;
  }
+ if(isStarosta()&&SHARED.includes(S.tab)){const h1=v.querySelector("h1");if(h1)h1.insertAdjacentHTML("afterend",`<div class="seg" role="group" aria-label="Pokaż">${[["all","Wszyscy"],["cyber","Cyber"],["detektywi","Detektywi"]].map(([k,l])=>`<button type="button" class="segb" data-spec="${k}" aria-pressed="${(S.specFilter||"all")===k}">${l}</button>`).join("")}</div>`)}
+ if(S.tab==="home"&&!mySpec()){const h1=v.querySelector("h1");if(h1)h1.insertAdjacentHTML("afterend",`<div class="install"><b>Wybierz swoją specjalizację</b>, żeby widzieć tylko swoje terminy i zaliczenia.<div class="toolbar" style="margin:8px 0 0">${Object.entries(SPECY).map(([k,l])=>`<button class="btn primary" type="button" data-setspec="${k}">${l}</button>`).join("")}</div></div>`)}
 }
 
 function openForm(c,id){
@@ -328,20 +371,22 @@ function openForm(c,id){
  if(id&&!rec)return;
  const val=f=>rec?rec[f.k]??"":(f.k==="dzien"&&S.tab!=="zajecia"?"":(f.k==="dzien"?Math.min(dow(),5):""));
  const field=f=>{const v=val(f),id="f_"+f.k;let input;
-  if(f.type==="select")input=`<select id="${id}" name="${f.k}"><option value="">—</option>${f.opts.map((o,i)=>`<option value="${o}"${String(v)===String(o)?" selected":""}>${esc(f.optl?f.optl[o]:o)}</option>`).join("")}</select>`;
+  if(f.type==="select")input=`<select id="${id}" name="${f.k}"><option value="">${f.blank||"—"}</option>${f.opts.map((o,i)=>`<option value="${o}"${String(v)===String(o)?" selected":""}>${esc(f.optl?f.optl[o]:o)}</option>`).join("")}</select>`;
   else if(f.type==="textarea")input=`<textarea id="${id}" name="${f.k}">${esc(v)}</textarea>`;
   else input=`<input id="${id}" name="${f.k}" type="${f.type||"text"}" value="${esc(v)}"${f.req?" required":""}>`;
   return`<label class="fl" for="${id}">${f.l}${input}</label>`};
- let html=`<h3>${rec?"Edytuj":"Nowy"}: ${def.label.toLowerCase()}</h3>`;
- for(let i=0;i<def.fields.length;i++){const f=def.fields[i];
-  if(f.pair&&def.fields[i+1]){html+=`<div class="pair">${field(f)}${field(def.fields[i+1])}</div>`;i++}else html+=field(f)}
+ let html=`<h3>${rec?"Edytuj":"Nowy"}: ${def.label.toLowerCase()}</h3>${rec&&rec.zrodlo==="grupa"?`<p class="note" style="margin:0">Ten wpis pochodzi od starosty. Po wczytaniu nowego pliku od starosty zostanie zaktualizowany.</p>`:""}`;
+ const flds=def.fields.filter(f=>!f.only||(f.only==="starosta"&&isStarosta()));
+ for(let i=0;i<flds.length;i++){const f=flds[i];
+  if(f.pair&&flds[i+1]){html+=`<div class="pair">${field(f)}${field(flds[i+1])}</div>`;i++}else html+=field(f)}
  if(!rec)html+=`<label class="fl" for="f_coll">Sekcja<select id="f_coll" name="__coll">${Object.keys(COLS).map(k=>`<option value="${k}"${k===c?" selected":""}>${COLS[k].label}</option>`).join("")}</select></label>`;
- html+=`<div class="actions">${rec?`<button class="btn danger" type="button" id="delBtn">Usuń</button>${c==="terminy"?`<button class="btn" type="button" id="calBtn">Do kalendarza</button>`:""}<span class="spacer"></span>`:""}<button class="btn" type="button" id="cancelBtn">Anuluj</button><button class="btn primary" type="submit">Zapisz</button></div>`;
+ html+=`<div class="actions">${rec?`<button class="btn danger" type="button" id="delBtn">Usuń</button>${c==="terminy"||(c==="zajecia"&&rec.data)?`<button class="btn" type="button" id="calBtn">Do kalendarza</button>`:""}<span class="spacer"></span>`:""}<button class="btn" type="button" id="cancelBtn">Anuluj</button><button class="btn primary" type="submit">Zapisz</button></div>`;
  const form=$("#form");form.innerHTML=html;form.dataset.c=c;form.dataset.id=id||"";
  const coll=form.querySelector("#f_coll");if(coll)coll.onchange=()=>openForm(coll.value);
  form.querySelector("#cancelBtn").onclick=()=>$("#dlg").close();
  const calB=form.querySelector("#calBtn");
- if(calB)calB.onclick=()=>{const cur={...rec};for(const f of COLS.terminy.fields)cur[f.k]=form.elements[f.k].value.trim();addToCalendar([cur])};
+ if(calB&&c==="zajecia")calB.onclick=()=>{const cur={...rec};for(const f of COLS.zajecia.fields)cur[f.k]=form.elements[f.k].value.trim();$("#dlg").close();addToCalendar("zajecia",[zajToEv(cur)])};
+ else if(calB)calB.onclick=()=>{const cur={...rec};for(const f of COLS.terminy.fields)cur[f.k]=form.elements[f.k].value.trim();$("#dlg").close();addToCalendar("terminy",[termToEv(cur)])};
  const del=form.querySelector("#delBtn");
  if(del)del.onclick=async()=>{if(del.dataset.armed!=="1"){del.dataset.armed="1";del.textContent="Na pewno usunąć?";return}
   $("#dlg").close();removeRec(c,id);toast("Usunięto")};
@@ -351,7 +396,7 @@ function openForm(c,id){
 
 $("#form").addEventListener("submit",async e=>{
  e.preventDefault();const form=e.target,c=form.dataset.c,id=form.dataset.id;
- const body={};for(const f of COLS[c].fields){let v=form.elements[f.k].value.trim();if(f.type==="number"||f.k==="dzien")v=v===""?"":Number(v);body[f.k]=v}
+ const body={};for(const f of COLS[c].fields){if(!form.elements[f.k])continue;let v=form.elements[f.k].value.trim();if(f.type==="number"||f.k==="dzien")v=v===""?"":Number(v);body[f.k]=v}
  if(c==="zajecia"&&body.data){const d=new Date(body.data+"T00:00").getDay();body.dzien=d===0?7:d}
  $("#dlg").close();
  if(id){const old=S.data[c].find(x=>x.id===id)||{};upsert(c,{...old,...body,id})}
@@ -368,6 +413,9 @@ document.addEventListener("click",async e=>{
  const nw=e.target.closest("[data-new]");if(nw){openForm(nw.dataset.new);return}
  const it=e.target.closest(".item[data-c]");if(it){openForm(it.dataset.c,it.dataset.id);return}
 });
+document.addEventListener("click",e=>{
+ const sb=e.target.closest("[data-spec]");if(sb){S.specFilter=sb.dataset.spec;render();return}
+ const ss=e.target.closest("[data-setspec]");if(ss){lsSet("panel-starosty-spec",ss.dataset.setspec);render();toast("Specjalizacja: "+SPECY[ss.dataset.setspec]);return}});
 document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches('.item[role="button"]')){e.preventDefault();openForm(e.target.dataset.c,e.target.dataset.id)}});
 $("#addBtn").onclick=()=>openForm(TABS.some(t=>t.id===S.tab&&COLS[t.id])?S.tab:"terminy");
 
@@ -383,27 +431,47 @@ async function saveFile(name,text,mime,preferShare){
 const icsEsc=t=>String(t||"").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");
 const icsDate=iso=>iso.replace(/-/g,"");
 function icsFold(line){const out=[];let l=line;while(l.length>73){out.push(l.slice(0,73));l=" "+l.slice(73)}out.push(l);return out.join("\r\n")}
-function makeICS(items){
+const ALERTY=[["PT15M","15 min przed"],["PT30M","30 min przed"],["PT1H","1 godz. przed"],["PT3H","3 godz. przed"],["P1D","1 dzień przed"],["P2D","2 dni przed"],["P7D","tydzień przed"]];
+const ALERT_DOMYSLNE={terminy:["P1D","P7D"],zajecia:["PT1H"]};
+function fmtLocal(iso,time){const [y,m,d]=iso.split("-"),[h,mi]=time.split(":");return y+m+d+"T"+h.padStart(2,"0")+(mi||"00").padStart(2,"0")+"00"}
+function addMin(iso,time,min){const dt=new Date(iso+"T00:00");const [h,m]=time.split(":").map(Number);dt.setHours(h,(m||0)+min);return{iso:localISO(dt),time:hm(dt)}}
+// ev: {id,title,data,od?,do?,opis?,miejsce?}
+function makeICS(evs,alerts){
  const stamp=new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
- const L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Panel Starosty//PL","CALSCALE:GREGORIAN","METHOD:PUBLISH"];
- for(const t of items){if(!t.data)continue;
+ const L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Memento Egzamini//PL","CALSCALE:GREGORIAN","METHOD:PUBLISH",
+  "BEGIN:VTIMEZONE","TZID:Europe/Warsaw","BEGIN:STANDARD","DTSTART:19701025T030000","RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU","TZOFFSETFROM:+0200","TZOFFSETTO:+0100","TZNAME:CET","END:STANDARD",
+  "BEGIN:DAYLIGHT","DTSTART:19700329T020000","RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU","TZOFFSETFROM:+0100","TZOFFSETTO:+0200","TZNAME:CEST","END:DAYLIGHT","END:VTIMEZONE"];
+ for(const t of evs){if(!t.data)continue;
   L.push("BEGIN:VEVENT","UID:"+(t.id||uid())+"@panel-starosty","DTSTAMP:"+stamp);
-  if(t.godz){const [h,m]=t.godz.split(":").map(Number);const st=new Date(t.data+"T00:00");st.setHours(h,m||0);const en=new Date(st.getTime()+90*6e4);
-   const f=d=>d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0")+"T"+String(d.getHours()).padStart(2,"0")+String(d.getMinutes()).padStart(2,"0")+"00";
-   L.push("DTSTART;TZID=Europe/Warsaw:"+f(st),"DTEND;TZID=Europe/Warsaw:"+f(en))}
-  else{const n=new Date(t.data+"T00:00");n.setDate(n.getDate()+1);const nx=n.getFullYear()+String(n.getMonth()+1).padStart(2,"0")+String(n.getDate()).padStart(2,"0");
-   L.push("DTSTART;VALUE=DATE:"+icsDate(t.data),"DTEND;VALUE=DATE:"+nx)}
-  L.push("SUMMARY:"+icsEsc((t.kategoria?t.kategoria+": ":"")+t.tytul));
+  if(t.od){const end=t.do&&t.do>t.od?{iso:t.data,time:t.do}:addMin(t.data,t.od,90);
+   L.push("DTSTART;TZID=Europe/Warsaw:"+fmtLocal(t.data,t.od),"DTEND;TZID=Europe/Warsaw:"+fmtLocal(end.iso,end.time))}
+  else{const n=new Date(t.data+"T00:00");n.setDate(n.getDate()+1);L.push("DTSTART;VALUE=DATE:"+t.data.replace(/-/g,""),"DTEND;VALUE=DATE:"+localISO(n).replace(/-/g,""))}
+  L.push("SUMMARY:"+icsEsc(t.title));
+  if(t.miejsce)L.push("LOCATION:"+icsEsc(t.miejsce));
   if(t.opis)L.push("DESCRIPTION:"+icsEsc(t.opis));
-  L.push("BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+icsEsc(t.tytul),"TRIGGER:-P1D","END:VALARM");
-  if(t.kategoria==="Egzamin"||t.kategoria==="Kolokwium")L.push("BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+icsEsc(t.tytul),"TRIGGER:-P7D","END:VALARM");
+  for(const a of alerts)L.push("BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+icsEsc(t.title),"TRIGGER:-"+a,"END:VALARM");
   L.push("END:VEVENT")}
  L.push("END:VCALENDAR");return L.map(icsFold).join("\r\n")+"\r\n"}
-async function addToCalendar(items){
- items=items.filter(t=>t.data);if(!items.length){toast("Najpierw ustaw datę terminu.");return}
- const name=items.length===1?"termin-"+items[0].data+".ics":"terminy-"+todayISO()+".ics";
- await saveFile(name,makeICS(items),"text/calendar",false);
- toast(items.length===1?"Otwórz plik i stuknij „Dodaj do kalendarza”":"Otwórz plik i stuknij „Dodaj wszystkie”")}
+const termToEv=t=>({id:t.id,title:(t.kategoria?t.kategoria+": ":"")+t.tytul,data:t.data,od:t.godz||"",opis:t.opis||""});
+const zajToEv=z=>({id:z.id,title:(z.typ?z.typ+": ":"")+z.przedmiot,data:z.data,od:z.od||"",do:z.do||"",miejsce:z.sala||"",opis:[z.prowadzacy,z.uwagi].filter(Boolean).join("\n")});
+let calJob=null;
+function addToCalendar(kind,evs){
+ evs=evs.filter(e=>e.data);if(!evs.length){toast(kind==="terminy"?"Najpierw ustaw datę terminu.":"Brak nadchodzących zajęć z datą.");return}
+ let saved=null;try{saved=JSON.parse(localStorage.getItem("panel-starosty-alerty-"+kind))}catch(e){}
+ const sel=Array.isArray(saved)?saved:ALERT_DOMYSLNE[kind];
+ $("#alertOpts").innerHTML=ALERTY.map(([v,l])=>`<label class="chk"><input type="checkbox" name="alert" value="${v}"${sel.includes(v)?" checked":""}>${l}</label>`).join("");
+ const n=evs.length;$("#calInfo").textContent=n===1?evs[0].title+" · "+fmtDate(evs[0].data)+(evs[0].od?", "+evs[0].od:""):(kind==="zajecia"?"Zajęcia z najbliższych zjazdów: ":"Nadchodzące terminy: ")+n+". Dodaj je raz – ponowne dodanie utworzy duplikaty.";
+ $("#calAllDay").hidden=!evs.some(e=>!e.od);
+ calJob={kind,evs};$("#cdlg").showModal()}
+$("#alertOpts").addEventListener("change",e=>{const on=[...$("#alertOpts").querySelectorAll("input:checked")];if(on.length>2){e.target.checked=false;toast("Kalendarz na iPadzie obsługuje najwyżej 2 przypomnienia.")}});
+$("#calCancel").onclick=()=>$("#cdlg").close();
+$("#cform").addEventListener("submit",async e=>{e.preventDefault();if(!calJob)return;
+ const alerts=[...$("#alertOpts").querySelectorAll("input:checked")].map(x=>x.value);
+ try{localStorage.setItem("panel-starosty-alerty-"+calJob.kind,JSON.stringify(alerts))}catch(_){}
+ const {kind,evs}=calJob;$("#cdlg").close();
+ const name=evs.length===1?(kind==="terminy"?"termin-":"zajecia-")+evs[0].data+".ics":kind+"-"+todayISO()+".ics";
+ await saveFile(name,makeICS(evs,alerts),"text/calendar",false);
+ toast(evs.length===1?"Otwórz plik i stuknij „Dodaj do kalendarza”":"Otwórz plik i stuknij „Dodaj wszystkie”")});
 
 // Import planu z USOS (.ics)
 function parseICS(text){
@@ -469,16 +537,42 @@ document.addEventListener("change",async e=>{
  if(e.target.id!=="usosFile")return;const f=e.target.files[0];e.target.value="";if(!f)return;
  try{const n=importUSOS(await f.text());toast(n?"Zaimportowano plan z USOS ("+n+")":"W pliku nie ma zajęć z godzinami.")}catch(_){toast("Nie udało się odczytać pliku z USOS.")}});
 document.addEventListener("click",e=>{
- if(e.target.id==="calAll"){addToCalendar(sortT(S.data.terminy.filter(t=>daysTo(t.data)>=0)))}
+ if(e.target.id==="calAll"){const f=isStarosta()?(S.specFilter||"all"):(mySpec()||"all");addToCalendar("terminy",sortT(S.data.terminy.filter(t=>daysTo(t.data)>=0&&forSpec(t,f))).map(termToEv))}
+ if(e.target.id==="calZaj"){const t=todayISO();addToCalendar("zajecia",[...S.data.zajecia].filter(z=>z.data&&z.data>=t).sort((a,b)=>(a.data+a.od).localeCompare(b.data+b.od)).map(zajToEv))}
  if(e.target.id==="usosLinkBtn")openUsosDialog();
  if(e.target.id==="usosSync")syncUSOS(false)});
 
 // Kopia danych
 function lastBackupText(){let d=null;try{d=localStorage.getItem(META)}catch(e){}
  $("#lastBackup").textContent=d?"Ostatnia kopia: "+new Date(d).toLocaleString("pl-PL",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"}):"Nie zrobiłeś jeszcze żadnej kopii."}
-$("#backupBtn").onclick=()=>{lastBackupText();$("#bdlg").showModal()};
+const src=x=>(isStarosta()&&SPECY[x.spec]?" · "+SPECY[x.spec]:"")+(x.zrodlo==="grupa"?" · od starosty":"");
+const hasGroup=()=>["terminy","przedmioty","kontakty"].some(c=>S.data[c].some(x=>x.zrodlo==="grupa"));
+const GRUPA=["terminy","przedmioty","kontakty"];
+function groupInfoText(){
+ if(isStarosta()){const n=S.data.terminy.filter(x=>x.zrodlo!=="grupa").length,p=S.data.przedmioty.filter(x=>x.zrodlo!=="grupa").length,k=S.data.kontakty.filter(x=>x.zrodlo!=="grupa"&&x.rola!=="Student").length;
+  const ile=sp=>GRUPA.reduce((a,c)=>a+S.data[c].filter(x=>x.zrodlo!=="grupa"&&x.spec===sp).length,0);
+  return`Plik dla grupy zawiera terminy (${n}), przedmioty (${p}) i kontakty (${k}); w tym tylko dla Cyber: ${ile("cyber")}, tylko dla Detektywów: ${ile("detektywi")}. Każdy zobaczy wpisy dla całej grupy i swojej specjalizacji. Kontakty z rolą „Student”, Twój plan, zadania i link do USOS zostają tylko u Ciebie. Wyślij plik na grupę, a po zmianach wyślij nowy.`}
+ const g=lsGet(GSYNC);return g?"Ostatni plik od starosty: "+new Date(g).toLocaleString("pl-PL",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"})+". Wczytaj nowszy, gdy starosta go wyśle – Twój plan i notatki zostaną.":"Starosta wysyła plik z terminami, przedmiotami i kontaktami. Wczytaj go tutaj – Twój plan i notatki zostaną."}
+function openSettings(){lastBackupText();
+ document.querySelectorAll('#bform input[name=rola]').forEach(r=>r.checked=r.value===(isStarosta()?"starosta":"student"));
+ document.querySelectorAll('#bform input[name=spec]').forEach(r=>r.checked=r.value===mySpec());
+ $("#groupInfo").textContent=groupInfoText();$("#shareGroupBtn").hidden=!isStarosta();$("#bdlg").showModal()}
+$("#backupBtn").onclick=openSettings;
+$("#bform").addEventListener("change",e=>{if(e.target.name==="spec"){lsSet("panel-starosty-spec",e.target.value);render();toast("Specjalizacja: "+SPECY[e.target.value]);return}
+ if(e.target.name!=="rola")return;lsSet(ROLA,e.target.value);applyRole();render();openSettings();toast(e.target.value==="starosta"?"Tryb starosty":"Tryb studenta")});
+$("#shareGroupBtn").onclick=async()=>{
+ const dane={};for(const c of GRUPA)dane[c]=S.data[c].filter(x=>x.zrodlo!=="grupa"&&!(c==="kontakty"&&x.rola==="Student"));
+ if(!GRUPA.some(c=>dane[c].length)){toast("Najpierw dodaj terminy, przedmioty albo kontakty.");return}
+ const json=JSON.stringify({aplikacja:"Memento Egzamini",typ:"grupa",wersja:1,zapisano:new Date().toISOString(),dane},null,2);
+ try{if(await saveFile("dla-grupy-"+todayISO()+".json",json,"application/json",true))toast("Wyślij plik na grupę")}catch(_){toast("Nie udało się utworzyć pliku.")}};
+function importGroup(o){
+ if(isStarosta()){toast("To plik dla grupy. W trybie starosty nie trzeba go wczytywać – zmień tryb w Ustawieniach.");return}
+ let n=0;for(const c of GRUPA){const inc=Array.isArray(o.dane[c])?o.dane[c]:[];n+=inc.length;
+  S.data[c]=S.data[c].filter(x=>x.zrodlo!=="grupa").concat(inc.map(x=>({...x,id:"g-"+(x.id||uid()),zrodlo:"grupa"})))}
+ lsSet(GSYNC,o.zapisano||new Date().toISOString());persist();render();if($("#bdlg").open)$("#bdlg").close();
+ toast("Wczytano informacje od starosty ("+n+")")}
 $("#exportBtn").onclick=async()=>{
- const json=JSON.stringify({aplikacja:"Panel Starosty",wersja:1,zapisano:new Date().toISOString(),dane:S.data},null,2);
+ const json=JSON.stringify({aplikacja:"Memento Egzamini",wersja:1,zapisano:new Date().toISOString(),dane:S.data},null,2);
  const name="panel-starosty-"+todayISO()+".json";
  try{
   if(!await saveFile(name,json,"application/json",true))return;
@@ -486,15 +580,28 @@ $("#exportBtn").onclick=async()=>{
   lastBackupText();toast("Kopia gotowa – wybierz „Zachowaj w Plikach”")
  }catch(e){if(e&&e.name==="AbortError")return;toast("Nie udało się utworzyć pliku.")}
 };
-$("#importFile").onchange=async e=>{
- const f=e.target.files[0];e.target.value="";if(!f)return;
- try{const o=JSON.parse(await f.text());if(!o||typeof o.dane!=="object")throw 0;
-  for(const c of Object.keys(S.data))S.data[c]=Array.isArray(o.dane[c])?o.dane[c].map(x=>({...x,id:x.id||uid()})):[];
-  persist();render();$("#bdlg").close();toast("Wczytano dane z kopii")
- }catch(_){toast("To nie jest plik kopii Panelu Starosty.")}
-};
+document.addEventListener("change",async e=>{
+ if(!e.target.matches("input[data-import]"))return;const f=e.target.files[0];e.target.value="";if(!f)return;
+ let o;try{o=JSON.parse(await f.text())}catch(_){toast("Nie udało się odczytać pliku.");return}
+ if(!o||typeof o.dane!=="object"){toast("To nie jest plik z Memento Egzamini.");return}
+ if(o.typ==="grupa"){importGroup(o);return}
+ if(e.target.id!=="importFile"){toast("To jest pełna kopia danych, nie plik dla grupy. Wczytaj ją przyciskiem „Wczytaj kopię”.");return}
+ for(const c of Object.keys(S.data))S.data[c]=Array.isArray(o.dane[c])?o.dane[c].map(x=>({...x,id:x.id||uid()})):[];
+ persist();render();$("#bdlg").close();toast("Wczytano dane z kopii")});
+
+let installEvt=null;
+const standalone=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+const isIOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+function installHint(){
+ if(standalone()||location.protocol!=="https:")return"";
+ if(isIOS())return`<div class="install"><b>Zainstaluj aplikację:</b> w Safari stuknij <b>Udostępnij</b> → <b>Do ekranu początkowego</b> i uruchamiaj ją z ikony. Dane z tej karty przeglądarki nie przeniosą się do zainstalowanej aplikacji.</div>`;
+ return`<div class="install"><b>Zainstaluj aplikację</b>, żeby działała bez internetu i miała własną ikonę.${installEvt?`<div><button class="btn primary" type="button" id="installBtn">Zainstaluj</button></div>`:` W Chrome otwórz menu <b>⋮</b> i wybierz <b>Zainstaluj aplikację</b> albo <b>Dodaj do ekranu głównego</b>.`}</div>`}
+addEventListener("beforeinstallprompt",e=>{e.preventDefault();installEvt=e;render()});
+addEventListener("appinstalled",()=>{installEvt=null;render()});
+document.addEventListener("click",async e=>{if(e.target.id!=="installBtn"||!installEvt)return;installEvt.prompt();try{await installEvt.userChoice}catch(_){}installEvt=null;render()});
 
 loadLocal();
+applyRole();
 render();
 // Automatyczne odświeżenie planu, jeśli minęło ponad 6 godzin
 (()=>{const t=lsGet(USYNC),old=S.data.zajecia.some(z=>z.zrodlo==="usos"&&!z.data);if(usosLink()&&(old||!t||Date.now()-new Date(t)>6*36e5))syncUSOS(true)})();
