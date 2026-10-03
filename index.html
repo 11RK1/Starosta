@@ -369,6 +369,7 @@ document.addEventListener("click",e=>{if(e.target.id==="chgOk"){lsSet(ZMIANY,nul
 function render(){
  renderTabs();
  const SHARED=["terminy","przedmioty","kontakty","ogloszenia"];
+ if(S.specFilter==="wspolne")S.specFilter="all";
  const filt=S.tab==="home"||!isStarosta()?(mySpec()||"all"):(S.specFilter||"all");
  const D={...S.data};for(const c of SHARED)D[c]=S.data[c].filter(x=>forSpec(x,filt));D.zajecia=S.data.zajecia.filter(z=>visZaj(z,filt));const v=$("#view");
  if(!S.loaded){v.innerHTML=`<p class="sub">Wczytywanie danych…</p>`;return}
@@ -439,7 +440,7 @@ function render(){
   <div class="list">${open.length?open.map(itemTask).join(""):empty("Nic nie czeka.","zadania")}</div>
   ${done.length?`<h2>Zrobione</h2><div class="list">${done.map(itemTask).join("")}</div>`:""}`;
  }
- if(isStarosta()&&(SHARED.includes(S.tab)||S.tab==="zajecia")){const h1=v.querySelector("h1");if(h1)h1.insertAdjacentHTML("afterend",`<div class="seg" role="group" aria-label="Pokaż">${[["all","Wszystko"],["wspolne","Wspólne"],["cyber","Widzą Cyber"],["detektywi","Widzą Detektywi"]].map(([k,l])=>`<button type="button" class="segb" data-spec="${k}" aria-pressed="${(S.specFilter||"all")===k}">${l}</button>`).join("")}</div>`)}
+ if(isStarosta()&&(SHARED.includes(S.tab)||S.tab==="zajecia")){const h1=v.querySelector("h1");if(h1)h1.insertAdjacentHTML("afterend",`<div class="seg" role="group" aria-label="Pokaż">${[["all","Wszystko"],["cyber","Cyber"],["detektywi","Detektywi"]].map(([k,l])=>`<button type="button" class="segb" data-spec="${k}" aria-pressed="${(S.specFilter||"all")===k}">${l}</button>`).join("")}</div>`)}
  if(S.tab==="home"&&!mySpec()){const h1=v.querySelector("h1");if(h1)h1.insertAdjacentHTML("afterend",`<div class="install"><b>Wybierz swoją specjalizację</b>, żeby widzieć tylko swoje terminy i zaliczenia.<div class="toolbar" style="margin:8px 0 0">${Object.entries(SPECY).map(([k,l])=>`<button class="btn primary" type="button" data-setspec="${k}">${l}</button>`).join("")}</div></div>`)}
 }
 
