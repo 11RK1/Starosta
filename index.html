@@ -419,8 +419,8 @@ function render(){
  } else if(S.tab==="przedmioty"){
   const p=[...D.przedmioty].sort((a,b)=>(a.nazwa||"").localeCompare(b.nazwa||"","pl"));
   const ects=p.reduce((s,x)=>s+(+x.ects||0),0);
-  v.innerHTML=`<h1>Przedmioty</h1><p class="sub">${p.length?`${p.length} przedmiotów${ects?" · "+ects+" ECTS":""}`:"Warunki zaliczenia i formy egzaminów w jednym miejscu."}</p>
-  <div class="list twocol">${p.length?p.map(x=>`<button class="item" type="button" data-c="przedmioty" data-id="${x.id}"><div class="main"><div class="t">${esc(x.nazwa)}</div><div class="m">${[x.prowadzacy,x.ects?x.ects+" ECTS":""].filter(Boolean).map(esc).join(" · ")}${src(x)}</div>${x.warunki?`<div class="m" style="white-space:pre-line;margin-top:4px">${esc(x.warunki)}</div>`:""}</div>${x.zaliczenie?`<span class="chip${x.zaliczenie==="Egzamin"?"":" n"}">${esc(x.zaliczenie)}</span>`:""}</button>`).join(""):empty("Nie ma jeszcze przedmiotów.","przedmioty")}</div>`;
+  v.innerHTML=`<h1>Przedmioty</h1><p class="sub">${p.length?`${p.length} przedmiotów${ects?" · "+ects+" ECTS":""}`:"Warunki zaliczenia i formy egzaminów w jednym miejscu."}${isStarosta()?" Przedmioty uzupełniają się same z planów USOS: przedmiot z obu planów trafia do Wspólnych, z jednego – do tej specjalizacji. Ty dopisujesz prowadzącego i warunki.":""}</p>
+  <div class="list twocol">${p.length?p.map(x=>`<button class="item" type="button" data-c="przedmioty" data-id="${x.id}"><div class="main"><div class="t">${esc(x.nazwa)}</div><div class="m">${[x.formy,x.prowadzacy,x.ects?x.ects+" ECTS":""].filter(Boolean).map(esc).join(" · ")}${src(x)}</div>${x.warunki?`<div class="m" style="white-space:pre-line;margin-top:4px">${esc(x.warunki)}</div>`:""}</div>${x.zaliczenie?`<span class="chip${x.zaliczenie==="Egzamin"?"":" n"}">${esc(x.zaliczenie)}</span>`:""}</button>`).join(""):empty("Nie ma jeszcze przedmiotów.","przedmioty")}</div>`;
  } else if(S.tab==="kontakty"){
   const order=["Opiekun roku","Dziekanat","Prowadzący","Samorząd","Student","Inne",""];
   const k=[...D.kontakty].sort((a,b)=>order.indexOf(a.rola||"")-order.indexOf(b.rola||"")||(a.imie||"").localeCompare(b.imie||"","pl"));
@@ -453,8 +453,8 @@ function openForm(c,id){
   else if(f.type==="textarea")input=`<textarea id="${id}" name="${f.k}">${esc(v)}</textarea>`;
   else input=`<input id="${id}" name="${f.k}" type="${f.type||"text"}" value="${esc(v)}"${f.req?" required":""}>`;
   return`<label class="fl" for="${id}">${f.l}${input}</label>`};
- let html=`<h3>${rec?"Edytuj":"Nowy"}: ${def.label.toLowerCase()}</h3>${rec&&rec.zrodlo==="grupa"?`<p class="note" style="margin:0">Ten wpis pochodzi od starosty. Po wczytaniu nowego pliku od starosty zostanie zaktualizowany.</p>`:""}`;
- const flds=def.fields.filter(f=>!f.only||(f.only==="starosta"&&isStarosta()));
+ let html=`<h3>${rec?"Edytuj":"Nowy"}: ${def.label.toLowerCase()}</h3>${rec&&rec.zrodlo==="plan"?`<p class="note" style="margin:0">Przedmiot z planu USOS${rec.formy?" ("+esc(rec.formy)+")":""}. Pole „Dla kogo” ustawia się samo: ${rec.spec?esc(SPECY[rec.spec]):"Wspólne – jest w obu planach"}.</p>`:""}${rec&&rec.zrodlo==="grupa"?`<p class="note" style="margin:0">Ten wpis pochodzi od starosty. Po wczytaniu nowego pliku od starosty zostanie zaktualizowany.</p>`:""}`;
+ const flds=def.fields.filter(f=>(!f.only||(f.only==="starosta"&&isStarosta()))&&!(rec&&rec.zrodlo==="plan"&&f.k==="spec"));
  for(let i=0;i<flds.length;i++){const f=flds[i];
   if(f.pair&&flds[i+1]){html+=`<div class="pair">${field(f)}${field(flds[i+1])}</div>`;i++}else html+=field(f)}
  if(!rec)html+=`<label class="fl" for="f_coll">Sekcja<select id="f_coll" name="__coll">${Object.keys(COLS).filter(k=>!COLS[k].only||isStarosta()).map(k=>`<option value="${k}"${k===c?" selected":""}>${COLS[k].label}</option>`).join("")}</select></label>`;
@@ -608,13 +608,27 @@ async function syncOne(sp,url,silent){
  if(!r.ok)throw new Error("http "+r.status);
  const text=await r.text();if(!/BEGIN:VCALENDAR/.test(text))throw new Error("format");
  const n=importUSOS(text,sp);lsSet(USYNC+"-"+sp,new Date().toISOString());return n}
+// Przedmioty z planu: w obu planach = Wspólne, w jednym = ta specjalizacja. Przypisania się kumulują (planSpecs), nic nie jest kasowane.
+const normName=n=>(n||"").toLocaleLowerCase("pl").replace(/\s+/g," ").trim();
+function syncPrzedmioty(){if(!isStarosta())return 0;
+ const m=new Map();
+ for(const z of S.data.zajecia){if(z.zrodlo!=="usos"||!z.spec||!z.przedmiot)continue;const k=normName(z.przedmiot);
+  const e=m.get(k)||{nazwa:z.przedmiot,specs:new Set(),typy:new Set()};e.specs.add(z.spec);if(z.typ)e.typy.add(z.typ);m.set(k,e)}
+ let zmiany=0;
+ for(const [k,e] of m){let rec=S.data.przedmioty.find(x=>x.zrodlo!=="grupa"&&(x.planKey===k||normName(x.nazwa)===k));
+  const specs=new Set([...(rec&&rec.planSpecs||[]),...e.specs]),spec=specs.size>1?"":[...specs][0];
+  const formy=[...new Set([...(rec&&rec.formy?rec.formy.split(", "):[]),...e.typy])].sort((a,b)=>a.localeCompare(b,"pl")).join(", ");
+  if(!rec){S.data.przedmioty.push({id:"plan-"+uid(),zrodlo:"plan",planKey:k,nazwa:e.nazwa,spec,planSpecs:[...specs].sort(),formy,zaliczenie:"",ects:"",prowadzacy:"",warunki:""});zmiany++;continue}
+  const ps=[...specs].sort();
+  if(rec.spec!==spec||rec.formy!==formy||rec.planKey!==k||JSON.stringify(rec.planSpecs)!==JSON.stringify(ps)){Object.assign(rec,{spec,formy,planKey:k,planSpecs:ps});if(!rec.zrodlo)rec.zrodlo="plan";zmiany++}}
+ if(zmiany)persist();return zmiany}
 async function syncUSOS(silent,only){if(!isStarosta())return false;
  const L=getLinks(),specs=Object.keys(L).filter(sp=>!only||sp===only);if(!specs.length)return false;
  if(!navigator.onLine){if(!silent)toast("Brak internetu. Spróbuj później.");return false}
  if(!silent)toast("Pobieram plan z USOS…");
  const ok=[];let fail=null;
  for(const sp of specs){try{const n=await syncOne(sp,L[sp]);ok.push((isStarosta()?SPECY[sp]+": ":"")+n)}catch(err){fail=fail||{sp,err}}}
- render();
+ syncPrzedmioty();render();
  if(!silent){if(fail){if(String(fail.err.message).startsWith("http 4"))toast("USOS odrzucił link"+(isStarosta()?" ("+SPECY[fail.sp]+")":"")+". Skopiuj go ponownie z USOSweb.");else showUsosFallback(fail.sp,L[fail.sp])}
   else toast("Zaktualizowano plan z USOS ("+ok.join(", ")+")")}
  return !fail}
@@ -635,7 +649,7 @@ $("#uform").addEventListener("submit",e=>{e.preventDefault();
 
 document.addEventListener("change",async e=>{
  const sp=e.target.dataset&&e.target.dataset.icsspec;if(!sp)return;const f=e.target.files[0];e.target.value="";if(!f)return;
- try{const n=importUSOS(await f.text(),sp);lsSet(USYNC+"-"+sp,new Date().toISOString());if($("#udlg").open)$("#udlg").close();render();
+ try{const n=importUSOS(await f.text(),sp);syncPrzedmioty();lsSet(USYNC+"-"+sp,new Date().toISOString());if($("#udlg").open)$("#udlg").close();render();
   toast(n?"Wczytano plan"+(isStarosta()?" ("+SPECY[sp]+")":"")+": "+n+" zajęć":"W pliku nie ma zajęć z godzinami.")}catch(_){toast("Nie udało się odczytać pliku z USOS.")}});
 document.addEventListener("click",e=>{
  if(e.target.id==="calAll"){const f=isStarosta()?(S.specFilter||"all"):(mySpec()||"all");addToCalendar("terminy",sortT(S.data.terminy.filter(t=>daysTo(t.data)>=0&&forSpec(t,f))).map(termToEv))}
@@ -830,6 +844,7 @@ async function fetchKalStarosta(loud){
   const dane=await decryptGroup(o,pw);if(dane.kalendarze&&typeof dane.kalendarze==="object"){const nowy=JSON.stringify(dane.kalendarze);
    if(lsGet(KAL)!==nowy){lsSet(KAL,nowy);render();toast("Link do kalendarza jest gotowy: Plan → Kalendarz w telefonie")}}
  }catch(_){if(loud)toast("Hasło grupy nie pasuje do opublikowanych danych.")}}
+if(syncPrzedmioty())render();
 fetchGroup();fetchKalStarosta(false);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")fetchKalStarosta(false)});
 if(isStarosta())schedulePublish();
