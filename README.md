@@ -72,24 +72,3 @@ W kalendarzu pojawią się zajęcia Twojej specjalizacji (z przypomnieniem godzi
 **Ustawienia → Zapisz kopię do pliku** zapisuje wszystkie Twoje dane do jednego pliku. Plik możesz trzymać w iCloud Drive, na Dysku Google albo na pendrive. Na nowym urządzeniu wybierz **Ustawienia → Wczytaj kopię**.
 
 Usunięcie aplikacji z ekranu albo wyczyszczenie danych przeglądarki kasuje dane, dlatego rób kopię co jakiś czas.
-
----
-
-## Dla starosty
-
-- W **Ustawieniach** wybierz tryb **Starosta** i swoją specjalizację.
-- **Plan → Połącz z USOS** (albo **Linki USOS**) ma dwa pola: plan Cyberbezpieczeństwa i plan Detektywów. Link Detektywów weź od kogoś z tej specjalizacji. Odśwież plan przed wysłaniem pliku grupie.
-- **Przegląd → Od starosty → + Dodaj komunikat** to okno na ważne informacje dla grupy, np. raty czesnego: tytuł, termin i treść wpisujesz ręcznie. Komunikat widzą wszyscy (albo tylko wybrana specjalizacja). Po terminie studentom znika, a u Ciebie zostaje wyszarzony, żeby łatwo było zmienić datę na kolejny miesiąc.
-- Przy terminach, przedmiotach i kontaktach ustaw pole **Dla kogo**: Cała grupa, Cyberbezpieczeństwo albo Detektywi. W zakładkach przełącznik **Wszyscy / Cyber / Detektywi** pokazuje, co widzi dana specjalizacja.
-- **Automatyczna publikacja (jednorazowa konfiguracja):**
-  1. Na github.com: zdjęcie profilowe → **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
-  2. Nazwa dowolna, **Expiration** np. 1 rok, **Repository access: Only select repositories → Starosta**.
-  3. **Permissions → Repositories → Add permissions → Contents: Read and write** oraz **Permissions → Account → Add permissions → Gists: Read and write** (to dla kalendarza). Potem **Generate token** i skopiuj token.
-  4. W aplikacji: **Ustawienia → Hasło grupy**, wpisz hasło (min. 8 znaków, najlepiej kilka słów) i stuknij **Zapisz hasło**.
-  5. **Ustawienia → Połączenie z GitHubem**, wklej token i stuknij **Zapisz i opublikuj**.
-
-  Bez hasła grupy aplikacja niczego nie opublikuje. Hasło podaj kolegom na Waszej grupie, a nie w repozytorium.
-
-  Od tej pory każda zmiana terminów, przedmiotów, kontaktów, komunikatów albo planu z USOS sama trafia do grupy po kilku sekundach. Aplikacja aktualizuje też kalendarze do subskrypcji, czyli ukryty Gist z plikami `plan-cyber.ics` i `plan-detektywi.ics`. Kalendarze nie są szyfrowane, bo telefon musi je odczytać, ale link do nich znają tylko osoby z hasłem grupy. Z komunikatów trafia tam tylko tytuł i termin. Jeśli link wycieknie, użyj **Ustawienia → Nowy link kalendarza**: stary link przestanie działać, a koledzy dostaną nowy w aplikacji. Token zostaje tylko na Twoim urządzeniu, nikomu go nie wysyłaj.
-- **Ustawienia → Wyślij jako plik** to zapasowy sposób bez GitHuba. Do publikacji i pliku trafia plan z USOS obu specjalizacji. Nie trafiają do niego kontakty z rolą „Student”, zajęcia dodane ręcznie, zadania ani linki do USOS.
-- Aktualizacja aplikacji: podmień pliki w repozytorium, a w `sw.js` zwiększ numer w `panel-starosty-vX`. Urządzenia pobiorą nową wersję przy kolejnym uruchomieniu.
