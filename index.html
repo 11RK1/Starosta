@@ -779,7 +779,7 @@ async function publishGroup(manual){
 $("#pubBtn").onclick=()=>publishGroup(true);
 $("#rotBtn").onclick=e=>{const b=e.currentTarget;if(b.dataset.armed!=="1"){b.dataset.armed="1";b.textContent="Na pewno? Stary link przestanie działać";return}b.dataset.armed="";b.textContent="Nowy link kalendarza";rotateCalendar()};
 $("#grpPwSave").onclick=async()=>{const v=$("#grpPw").value.trim();
- if(isStarosta()){if(v.length<8){toast("Hasło grupy musi mieć co najmniej 8 znaków.");return}lsSet(GPW,v);openSettings();toast("Zapisano hasło grupy");if(getGH().token)publishGroup(true);return}
+ if(isStarosta()){if(v.length<8){toast("Hasło grupy musi mieć co najmniej 8 znaków.");return}lsSet(GPW,v);openSettings();toast("Zapisano hasło grupy");if(getGH().token)publishGroup(true);else fetchKalStarosta(true);return}
  if(!v)return;lsSet(GPW,v);lsSet(GSYNC,null);lastFetch=0;S.needPw=false;toast("Zapisano hasło");fetchGroup()};
 $("#ghBtn").onclick=()=>{const c=getGH();$("#ghToken").value=c.token||"";$("#ghAuto").checked=c.auto!==false;$("#ghBox").hidden=!$("#ghBox").hidden;if(!$("#ghBox").hidden)$("#ghToken").focus()};
 $("#ghSave").onclick=async()=>{const t=$("#ghToken").value.trim();if(!t){toast("Wklej token GitHuba.");return}
@@ -822,7 +822,16 @@ render();
 // Automatyczne odświeżenie planu, jeśli minęło ponad 6 godzin
 function autoSync(){if(!isStarosta())return;const L=getLinks(),old=S.data.zajecia.some(z=>z.zrodlo==="usos"&&(!z.data||!z.spec));for(const sp of Object.keys(L)){const t=lsGet(USYNC+"-"+sp);if(old||!t||Date.now()-new Date(t)>2*36e5)syncUSOS(true,sp)}}
 autoSync();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")autoSync()});
-fetchGroup();
+// Drugie urządzenie starosty (bez tokenu GitHuba): pobiera tylko link do kalendarza z zaszyfrowanego pliku grupy
+async function fetchKalStarosta(loud){
+ if(!isStarosta()||getGH().token||!navigator.onLine||location.protocol!=="https:")return;
+ const pw=lsGet(GPW);if(!pw){if(loud)toast("Wpisz w Ustawieniach hasło grupy, żeby pobrać link do kalendarza.");return}
+ try{const r=await fetch("grupa.json",{cache:"no-store"});if(!r.ok)return;const o=await r.json();if(!o||o.typ!=="grupa-szyfr")return;
+  const dane=await decryptGroup(o,pw);if(dane.kalendarze&&typeof dane.kalendarze==="object"){const nowy=JSON.stringify(dane.kalendarze);
+   if(lsGet(KAL)!==nowy){lsSet(KAL,nowy);render();toast("Link do kalendarza jest gotowy: Plan → Kalendarz w telefonie")}}
+ }catch(_){if(loud)toast("Hasło grupy nie pasuje do opublikowanych danych.")}}
+fetchGroup();fetchKalStarosta(false);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")fetchKalStarosta(false)});
 if(isStarosta())schedulePublish();
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
